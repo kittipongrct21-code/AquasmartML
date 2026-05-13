@@ -1,119 +1,357 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import AppShell from "@/components/public/AppShell";
-import { getPublicFishList } from "@/lib/api";
-import { FishSpeciesRow } from "@/types/fish";
-
-const fallbackTopFish = ["Tilapia", "Snakehead", "Gourami", "Goldfish", "Catfish"];
-
-const toSlug = (value: string) =>
-  value
-    .toLowerCase()
-    .trim()
-    .replace(/_/g, " ")
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/[\s-]+/g, "-")
-    .replace(/^-|-$/g, "");
+import Link from "next/link";
+import { getPublicFishList, type FishListItem } from "@/lib/api";
 
 export default function HomePage() {
-  const router = useRouter();
-  const [q, setQ] = useState("");
-  const [rows, setRows] = useState<FishSpeciesRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [fishList, setFishList] = useState<FishListItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    const load = async () => {
+    let isMounted = true;
+
+    async function loadFeaturedFish() {
       try {
-        setLoading(true);
-        const res = await getPublicFishList();
-        setRows(res.data || []);
-      } catch {
-        setRows([]);
+        setIsLoading(true);
+        setErrorMessage("");
+
+        const data = await getPublicFishList();
+
+        if (!isMounted) return;
+        setFishList(data || []);
+      } catch (error) {
+        console.error("Failed to load featured fish:", error);
+        if (!isMounted) return;
+
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Failed to load featured fish."
+        );
+        setFishList([]);
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
+    }
+
+    loadFeaturedFish();
+
+    return () => {
+      isMounted = false;
     };
-    load();
   }, []);
 
-  const topRows = useMemo(() => rows.slice(0, 6), [rows]);
-
-  const submitSearch: React.FormEventHandler<HTMLFormElement> = (event) => {
-    event.preventDefault();
-    router.push(`/fish${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ""}`);
-  };
+  const featuredFish = useMemo(() => {
+    return fishList.slice(0, 4);
+  }, [fishList]);
 
   return (
-    <AppShell title="AquaSmart ML" subtitle="Fish search engine">
-      {/* Search Section */}
-      <section className="space-y-4">
-        <div className="md:hidden">
-          <h2 className="text-2xl font-extrabold text-slate-900">Explore fish species</h2>
-          <p className="mt-1 text-sm text-slate-500">Search by name or identify with AI.</p>
-        </div>
-        
-        <form onSubmit={submitSearch} className="flex flex-col gap-3 sm:flex-row">
-          <input
-            type="text"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search fish name..."
-            className="h-14 w-full flex-1 rounded-[24px] border border-white bg-white px-5 text-sm text-slate-900 shadow-sm focus:border-blue-300 focus:outline-none focus:ring-4 focus:ring-blue-100"
-          />
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => router.push("/identify")}
-              className="flex h-14 flex-1 items-center justify-center gap-2 rounded-[24px] bg-white px-6 text-sm font-bold text-slate-700 shadow-sm transition-transform active:scale-95 sm:flex-none"
-            >
-              📷 <span className="sm:hidden lg:inline">Identify</span>
-            </button>
-            <button
-              type="submit"
-              className="flex h-14 flex-1 items-center justify-center rounded-[24px] bg-blue-600 px-8 text-sm font-bold text-white shadow-md shadow-blue-200 transition-transform active:scale-95 sm:flex-none"
-            >
-              Search
-            </button>
-          </div>
-        </form>
-      </section>
+    <main className="min-h-screen px-4 py-8">
+      <section className="mx-auto max-w-6xl space-y-6">
+        <section className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
+          <div className="grid gap-0 lg:grid-cols-[1.15fr_0.85fr]">
+            <div className="p-6 sm:p-8">
+              <p className="text-sm font-semibold text-blue-600">AquaSmart ML</p>
 
-      {/* Top Searched Section */}
-      <section className="space-y-4 pt-2">
-        <div className="flex items-center justify-between px-1">
-          <h3 className="text-lg font-bold text-slate-900">Top Searched</h3>
-          <Link href="/fish" className="text-xs font-bold text-blue-600">See all</Link>
-        </div>
+              <h1 className="mt-3 text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">
+                Fish Search & Identification
+              </h1>
 
-        {loading ? (
-          <div className="rounded-[24px] bg-white p-8 text-center text-sm text-slate-400 shadow-sm animate-pulse">
-            Loading...
+              <p className="mt-4 max-w-2xl text-base leading-8 text-slate-600">
+                Discover fish information from the catalog and identify fish
+                from images using the AI model.
+              </p>
+
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Link
+                  href="/identify"
+                  className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+                >
+                  Identify Fish
+                </Link>
+
+                <Link
+                  href="/fish"
+                  className="rounded-2xl bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
+                >
+                  Browse Fish Catalog
+                </Link>
+              </div>
+
+              <div className="mt-8 grid gap-4 sm:grid-cols-3">
+                <QuickStat
+                  label="Catalog"
+                  value={`${fishList.length}`}
+                  helper="Published fish records"
+                />
+                <QuickStat
+                  label="AI Support"
+                  value="Ready"
+                  helper="Image-based fish prediction"
+                />
+                <QuickStat
+                  label="History"
+                  value="Tracked"
+                  helper="Keep prediction records"
+                />
+              </div>
+            </div>
+
+            <div className="bg-slate-50 p-6 sm:p-8">
+              <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+                <h2 className="text-xl font-bold text-slate-900">
+                  Quick Actions
+                </h2>
+
+                <div className="mt-5 space-y-3">
+                  <QuickActionCard
+                    href="/identify"
+                    title="Identify with AI"
+                    description="Upload a fish image and get instant prediction results."
+                    primary
+                  />
+
+                  <QuickActionCard
+                    href="/fish"
+                    title="Browse Fish Catalog"
+                    description="Explore fish species and view detailed information."
+                  />
+
+                  <QuickActionCard
+                    href="/history"
+                    title="View History"
+                    description="Check your recent fish prediction activity."
+                  />
+                </div>
+              </div>
+            </div>
           </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {(topRows.length > 0 ? topRows : fallbackTopFish.map((name) => ({ id: name, name, slug: toSlug(name), category: "General" as const }))).map((fish) => (
+        </section>
+
+        <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+          <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">
+                  Featured Fish
+                </h2>
+                <p className="mt-1 text-sm text-slate-600">
+                  Real fish records loaded from the database.
+                </p>
+              </div>
+
               <Link
-                key={fish.id}
-                href={`/fish/${fish.slug || toSlug(fish.name)}`}
-                className="group flex flex-col overflow-hidden rounded-[24px] border border-white bg-white p-3 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md"
+                href="/fish"
+                className="text-sm font-semibold text-blue-600 transition hover:text-blue-700"
               >
-                <div className="flex aspect-square w-full items-center justify-center rounded-[18px] bg-slate-50 text-3xl transition-colors group-hover:bg-blue-50">
-                  🐟
-                </div>
-                <div className="mt-3 px-1">
-                  <p className="truncate text-sm font-bold text-slate-900 group-hover:text-blue-600">{fish.name}</p>
-                  <span className="mt-1 inline-flex rounded-lg bg-[#F4FBFF] px-2 py-1 text-[10px] font-bold text-blue-600">
-                    {fish.category || "General"}
-                  </span>
-                </div>
+                View all
               </Link>
-            ))}
+            </div>
+
+            {isLoading ? (
+              <div className="mt-5 rounded-2xl bg-slate-50 px-4 py-4 text-sm text-slate-600">
+                Loading fish data...
+              </div>
+            ) : null}
+
+            {!isLoading && errorMessage ? (
+              <div className="mt-5 rounded-2xl bg-rose-50 px-4 py-4 text-sm text-rose-700">
+                {errorMessage}
+              </div>
+            ) : null}
+
+            {!isLoading && !errorMessage && featuredFish.length === 0 ? (
+              <div className="mt-5 rounded-2xl bg-slate-50 px-4 py-4 text-sm text-slate-600">
+                No fish data found.
+              </div>
+            ) : null}
+
+            {!isLoading && featuredFish.length > 0 ? (
+              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                {featuredFish.map((fish) => (
+                  <HomeFishCard key={fish.id} fish={fish} />
+                ))}
+              </div>
+            ) : null}
+          </section>
+
+          <section className="space-y-6">
+            <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+              <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">
+                How it works
+              </h2>
+
+              <div className="mt-5 space-y-4">
+                <StepCard
+                  step="01"
+                  title="Upload an image"
+                  description="Choose a clear fish photo from your device."
+                />
+                <StepCard
+                  step="02"
+                  title="Run AI identification"
+                  description="The model predicts the fish class and confidence score."
+                />
+                <StepCard
+                  step="03"
+                  title="Review fish details"
+                  description="Open the matched fish record and explore the catalog."
+                />
+              </div>
+            </div>
+
+            <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+              <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">
+                Start now
+              </h2>
+
+              <p className="mt-3 text-sm leading-7 text-slate-600">
+                Use the AI identification page to predict fish from images, or
+                open the catalog to browse species manually.
+              </p>
+
+              <div className="mt-5 flex flex-wrap gap-3">
+                <Link
+                  href="/identify"
+                  className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+                >
+                  Open Identify
+                </Link>
+
+                <Link
+                  href="/fish"
+                  className="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
+                >
+                  Open Catalog
+                </Link>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function QuickStat({
+  label,
+  value,
+  helper,
+}: {
+  label: string;
+  value: string;
+  helper: string;
+}) {
+  return (
+    <div className="rounded-2xl bg-slate-50 px-4 py-4">
+      <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+        {label}
+      </p>
+      <p className="mt-2 text-2xl font-extrabold tracking-tight text-slate-900">
+        {value}
+      </p>
+      <p className="mt-1 text-xs text-slate-500">{helper}</p>
+    </div>
+  );
+}
+
+function QuickActionCard({
+  href,
+  title,
+  description,
+  primary = false,
+}: {
+  href: string;
+  title: string;
+  description: string;
+  primary?: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      className={
+        primary
+          ? "block rounded-2xl bg-blue-600 px-4 py-4 text-white transition hover:bg-blue-700"
+          : "block rounded-2xl bg-slate-50 px-4 py-4 text-slate-700 transition hover:bg-slate-100"
+      }
+    >
+      <p className="text-base font-bold">{title}</p>
+      <p className={primary ? "mt-1 text-sm text-blue-100" : "mt-1 text-sm text-slate-500"}>
+        {description}
+      </p>
+    </Link>
+  );
+}
+
+function StepCard({
+  step,
+  title,
+  description,
+}: {
+  step: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="rounded-2xl bg-slate-50 px-4 py-4">
+      <div className="flex items-start gap-4">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-sm font-bold text-blue-700">
+          {step}
+        </div>
+
+        <div>
+          <p className="text-base font-bold text-slate-900">{title}</p>
+          <p className="mt-1 text-sm leading-7 text-slate-600">{description}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HomeFishCard({ fish }: { fish: FishListItem }) {
+  return (
+    <Link
+      href={`/fish/${fish.id}`}
+      className="group overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+    >
+      <div className="flex h-44 items-center justify-center overflow-hidden bg-slate-50">
+        {fish.cover_image_url ? (
+          <img
+            src={fish.cover_image_url}
+            alt={fish.name}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-slate-100">
+            <span className="text-base font-bold text-slate-400">AS</span>
           </div>
         )}
-      </section>
-    </AppShell>
+      </div>
+
+      <div className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-extrabold tracking-tight text-slate-900 transition group-hover:text-blue-700">
+              {fish.name}
+            </h3>
+            <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              {fish.category || "Fish"}
+            </p>
+          </div>
+
+          <span className="rounded-full bg-blue-50 px-3 py-1 text-[11px] font-semibold text-blue-700">
+            {fish.type || "Unknown"}
+          </span>
+        </div>
+
+        <p className="mt-3 line-clamp-3 text-sm leading-7 text-slate-600">
+          {fish.short_description || "No description available."}
+        </p>
+      </div>
+    </Link>
   );
 }

@@ -1,169 +1,688 @@
-const API_BASE_URL =
+export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
 
-export async function apiFetch<T>(
-  path: string,
-  options?: RequestInit
-): Promise<T> {
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(options?.headers || {}),
-    },
-    cache: "no-store",
-  });
+/* =========================================================
+   Types
+========================================================= */
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || "Request failed");
-  }
+export type FishListItem = {
+  id: number;
+  name: string;
+  slug: string;
+  short_description?: string | null;
+  type?: string | null;
+  category?: string | null;
+  habitat?: string | null;
+  identify_text?: string | null;
+  average_lifespan?: string | null;
+  adult_size?: string | null;
+  cover_image_url?: string | null;
+  is_active?: boolean;
+  origin?: string | null;
+};
 
-  return res.json();
-}
+export type FishImageItem = {
+  id: number;
+  fish_id: number;
+  image_url: string;
+  alt_text?: string | null;
+  is_cover?: boolean;
+  created_at?: string | null;
+};
 
-export async function uploadImage(file: File): Promise<{
+export type FishDetailResponse = {
+  fish: FishListItem;
+  farmer_info?: Record<string, unknown> | null;
+  ornamental_info?: Record<string, unknown> | null;
+  images?: FishImageItem[];
+};
+
+export type FishGeneralPayload = {
+  name: string;
+  slug: string;
+  short_description?: string | null;
+  type?: string | null;
+  category?: string | null;
+  habitat?: string | null;
+  identify_text?: string | null;
+  average_lifespan?: string | null;
+  adult_size?: string | null;
+  cover_image_url?: string | null;
+  is_active?: boolean;
+  origin?: string | null;
+};
+
+export type FishFarmerPayload = {
+  how_to_raise?: string | null;
+  pond_type?: string | null;
+  pond_size?: string | null;
+  population_per_pond?: string | null;
+  water_temp?: string | null;
+  ph?: string | null;
+  water_prep?: string | null;
+  recommended_food?: string | null;
+  not_recommended_food?: string | null;
+  feeding_frequency?: string | null;
+  feeding_amount?: string | null;
+  compatible_species?: string | null;
+  growth_rate?: string | null;
+  common_diseases?: string | null;
+  disease_prevention?: string | null;
+  source_type?: string | null;
+  source_size?: string | null;
+  system_type?: string | null;
+  incompatible_species?: string | null;
+  survival_rate?: string | null;
+  notes?: string | null;
+};
+
+export type FishOrnamentalPayload = {
+  environment?: string | null;
+  population?: string | null;
+  water_temp?: string | null;
+  ph?: string | null;
+  preparation?: string | null;
+  recommended_food?: string | null;
+  feeding_frequency?: string | null;
+  feeding_amount?: string | null;
+  source_type?: string | null;
+  source_size?: string | null;
+  compatible_species?: string | null;
+  growth_rate?: string | null;
+  common_diseases?: string | null;
+  disease_prevention?: string | null;
+  system_type?: string | null;
+  incompatible_species?: string | null;
+  survival_rate?: string | null;
+  not_recommended_food?: string | null;
+  notes?: string | null;
+};
+
+export type FishImagePayload = {
+  image_url: string;
+  alt_text?: string | null;
+  is_cover?: boolean;
+};
+export type FishPayload = {
+  general: FishGeneralPayload;
+  farmer?: FishFarmerPayload | null;
+  ornamental?: FishOrnamentalPayload | null;
+  images?: FishImagePayload[];
+};
+
+export type PredictionResponse = {
+  predicted_class: string;
+  raw_predicted_class?: string;
+  confidence_percent: number;
+  prediction_type?: string;
+  fish_name?: string;
+  image_url?: string;
+  result_json?: Record<string, unknown>;
+};
+
+export type HistoryItem = {
+  id: number;
+  user_id: string;
+  fish_id?: number | null;
+  fish_name?: string | null;
+  predicted_class: string;
+  raw_predicted_class?: string | null;
+  confidence_percent?: number | null;
+  prediction_type?: string | null;
+  uploaded_image_url?: string | null;
+  image_url?: string | null;
+  result_json?: Record<string, unknown> | null;
+  created_at?: string | null;
+};
+
+export type HistoryCreatePayload = {
+  user_id: string;
+  fish_id?: number | null;
+  fish_name?: string | null;
+  predicted_class: string;
+  raw_predicted_class?: string | null;
+  confidence_percent?: number | null;
+  prediction_type?: string | null;
+  result_json: Record<string, unknown>;
+  uploaded_image_url?: string | null;
+  image_url?: string | null;
+};
+
+export type Profile = {
+  id: string;
+  email?: string | null;
+  display_name?: string | null;
+  avatar_url?: string | null;
+  role?: "user" | "admin" | string;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+export type ProfileUpdatePayload = {
+  email?: string | null;
+  display_name?: string | null;
+  avatar_url?: string | null;
+  role?: string | null;
+};
+
+export type AuthPayload = {
+  email: string;
+  password: string;
+};
+
+export type AuthResponseData = {
+  user_id?: string | null;
+  email?: string | null;
+  access_token?: string | null;
+  refresh_token?: string | null;
+};
+
+export type UploadImageResponse = {
   message: string;
   bucket: string;
   path: string;
   public_url: string;
-}> {
-  const formData = new FormData();
-  formData.append("file", file);
+};
 
-  const res = await fetch(`${API_BASE_URL}/admin/upload-image`, {
-    method: "POST",
-    body: formData,
-  });
+export type FavoriteItem = {
+  id: number;
+  user_id: string;
+  fish_id: number;
+  created_at?: string | null;
+  fish_species?: FishListItem | null;
+};
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || "Upload failed");
+export type FavoritePayload = {
+  user_id: string;
+  fish_id: number;
+};
+
+/* =========================================================
+   Internal helpers
+========================================================= */
+
+async function parseError(response: Response, fallback: string): Promise<never> {
+  try {
+    const data = await response.json();
+    const message =
+      data?.detail ||
+      data?.message ||
+      data?.error_description ||
+      data?.error ||
+      fallback;
+    throw new Error(message);
+  } catch {
+    const text = await response.text().catch(() => "");
+    throw new Error(text || fallback);
   }
-
-  return res.json();
 }
 
-export async function getPublicFishList(q?: string) {
-  const search = q ? `?q=${encodeURIComponent(q)}` : "";
-  return apiFetch<{ data: import("@/types/fish").FishSpeciesRow[] }>(
-    `/fish${search}`
-  );
-}
-
-export async function getPublicFishById(fishId: number) {
-  return apiFetch<import("@/types/fish").FishDetailResponse>(`/fish/${fishId}`);
-}
-
-export async function predictFish(
-  file: File
-): Promise<import("@/types/fish").PredictFishResponse> {
-  const formData = new FormData();
-  formData.append("file", file);
-
-  const res = await fetch(`${API_BASE_URL}/predict`, {
-    method: "POST",
-    body: formData,
+async function requestJson<T>(
+  url: string,
+  init?: RequestInit,
+  fallbackMessage = "Request failed"
+): Promise<T> {
+  const response = await fetch(url, {
+    ...init,
     cache: "no-store",
   });
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || "Fish prediction failed");
+  if (!response.ok) {
+    await parseError(response, fallbackMessage);
   }
 
-  return res.json();
+  return response.json() as Promise<T>;
 }
 
-export async function getAdminFishList(params?: {
+function buildQuery(params: Record<string, string | number | boolean | undefined | null>) {
+  const searchParams = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && String(value).trim() !== "") {
+      searchParams.set(key, String(value));
+    }
+  });
+
+  const query = searchParams.toString();
+  return query ? `?${query}` : "";
+}
+
+/* =========================================================
+   Public fish APIs
+========================================================= */
+
+export async function getPublicFishList(q?: string): Promise<FishListItem[]> {
+  const query = buildQuery({ q });
+  const data = await requestJson<{ data: FishListItem[] }>(
+    `${API_BASE_URL}/fish${query}`,
+    undefined,
+    "Failed to fetch fish list"
+  );
+
+  return data.data || [];
+}
+
+export async function getPublicFish(): Promise<FishListItem[]> {
+  return getPublicFishList();
+}
+
+export async function getPublicFishById(
+  fishId: string | number
+): Promise<FishDetailResponse> {
+  return requestJson<FishDetailResponse>(
+    `${API_BASE_URL}/fish/${fishId}`,
+    undefined,
+    "Failed to fetch fish detail"
+  );
+}
+
+/* =========================================================
+   Prediction APIs
+========================================================= */
+
+export async function predictFish(
+  file: File,
+  userId?: string
+): Promise<PredictionResponse> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  if (userId) {
+    formData.append("user_id", userId);
+  }
+
+  return requestJson<PredictionResponse>(
+    `${API_BASE_URL}/predict`,
+    {
+      method: "POST",
+      body: formData,
+    },
+    "Prediction failed"
+  );
+}
+
+/* =========================================================
+   Admin fish APIs
+========================================================= */
+
+export async function getAdminFish(params?: {
   q?: string;
   status?: string;
   category?: string;
   fish_type?: string;
-}) {
-  const searchParams = new URLSearchParams();
-
-  if (params?.q) searchParams.set("q", params.q);
-  if (params?.status && params.status !== "all") {
-    searchParams.set("status", params.status);
-  }
-  if (params?.category) searchParams.set("category", params.category);
-  if (params?.fish_type) searchParams.set("fish_type", params.fish_type);
-
-  const query = searchParams.toString();
-  return apiFetch<{ data: import("@/types/fish").FishSpeciesRow[] }>(
-    `/admin/fish${query ? `?${query}` : ""}`
-  );
-}
-
-export async function getAdminFishById(fishId: number) {
-  return apiFetch<import("@/types/fish").FishDetailResponse>(
-    `/admin/fish/${fishId}`
-  );
-}
-
-export async function createFish(payload: import("@/types/fish").FishPayload) {
-  return apiFetch(`/admin/fish`, {
-    method: "POST",
-    body: JSON.stringify(payload),
+}): Promise<FishListItem[]> {
+  const query = buildQuery({
+    q: params?.q,
+    status: params?.status,
+    category: params?.category,
+    fish_type: params?.fish_type,
   });
+
+  const data = await requestJson<{ data: FishListItem[] }>(
+    `${API_BASE_URL}/admin/fish${query}`,
+    undefined,
+    "Failed to fetch admin fish list"
+  );
+
+  return data.data || [];
+}
+
+export async function getAdminFishById(
+  fishId: string | number
+): Promise<FishDetailResponse> {
+  return requestJson<FishDetailResponse>(
+    `${API_BASE_URL}/admin/fish/${fishId}`,
+    undefined,
+    "Failed to fetch admin fish detail"
+  );
+}
+
+export async function createFish(payload: FishPayload) {
+  return requestJson<{ message: string; data: FishDetailResponse }>(
+    `${API_BASE_URL}/admin/fish`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    },
+    "Failed to create fish"
+  );
 }
 
 export async function updateFish(
-  fishId: number,
-  payload: import("@/types/fish").FishPayload
+  fishId: string | number,
+  payload: FishPayload
 ) {
-  return apiFetch(`/admin/fish/${fishId}`, {
-    method: "PUT",
-    body: JSON.stringify(payload),
-  });
-}
-
-export async function toggleFishStatus(fishId: number) {
-  return apiFetch<{ message: string; data: import("@/types/fish").FishSpeciesRow }>(
-    `/admin/fish/${fishId}/status`,
+  return requestJson<{ message: string; data: FishDetailResponse }>(
+    `${API_BASE_URL}/admin/fish/${fishId}`,
     {
-      method: "PATCH",
-    }
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    },
+    "Failed to update fish"
   );
 }
 
-export async function deleteFish(fishId: number) {
-  return apiFetch<{ message: string }>(`/admin/fish/${fishId}`, {
-    method: "DELETE",
-  });
+export async function toggleFishStatus(fishId: string | number) {
+  return requestJson<{ message: string; data: FishListItem }>(
+    `${API_BASE_URL}/admin/fish/${fishId}/status`,
+    {
+      method: "PATCH",
+    },
+    "Failed to toggle fish status"
+  );
+}
+
+export async function deleteFish(fishId: string | number) {
+  return requestJson<{ message: string }>(
+    `${API_BASE_URL}/admin/fish/${fishId}`,
+    {
+      method: "DELETE",
+    },
+    "Failed to delete fish"
+  );
+}
+
+/* =========================================================
+   Admin image APIs
+========================================================= */
+
+export async function uploadImage(file: File): Promise<UploadImageResponse> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  return requestJson<UploadImageResponse>(
+    `${API_BASE_URL}/admin/upload-image`,
+    {
+      method: "POST",
+      body: formData,
+    },
+    "Failed to upload image"
+  );
+}
+
+export async function getFishImages(
+  fishId: string | number
+): Promise<FishImageItem[]> {
+  const data = await requestJson<{ data: FishImageItem[] }>(
+    `${API_BASE_URL}/admin/fish/${fishId}/images`,
+    undefined,
+    "Failed to fetch fish images"
+  );
+
+  return data.data || [];
 }
 
 export async function addFishImage(
-  fishId: number,
-  payload: {
-    image_url: string;
-    alt_text?: string;
-    is_cover?: boolean;
-  }
+  fishId: string | number,
+  payload: FishImagePayload
 ) {
-  return apiFetch(`/admin/fish/${fishId}/images`, {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-}
-
-export async function getFishImages(fishId: number) {
-  return apiFetch<{ data: import("@/types/fish").FishImageRow[] }>(
-    `/admin/fish/${fishId}/images`
+  return requestJson<{ message: string; data: FishImageItem }>(
+    `${API_BASE_URL}/admin/fish/${fishId}/images`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    },
+    "Failed to add fish image"
   );
 }
 
-export async function setFishCover(imageId: number) {
-  return apiFetch(`/admin/fish/images/${imageId}/cover`, {
-    method: "PUT",
-  });
+export async function setFishImageCover(imageId: string | number) {
+  return requestJson<{
+    message: string;
+    data: {
+      fish_id: number;
+      image_id: number;
+      cover_image_url: string;
+      fish: FishListItem;
+    };
+  }>(
+    `${API_BASE_URL}/admin/fish/images/${imageId}/cover`,
+    {
+      method: "PUT",
+    },
+    "Failed to set cover image"
+  );
 }
 
-export async function deleteFishImage(imageId: number) {
-  return apiFetch(`/admin/fish/images/${imageId}`, {
-    method: "DELETE",
-  });
+export async function setFishCover(imageId: string | number) {
+  return setFishImageCover(imageId);
 }
 
-export { API_BASE_URL };
+export async function deleteFishImage(imageId: string | number) {
+  return requestJson<{ message: string }>(
+    `${API_BASE_URL}/admin/fish/images/${imageId}`,
+    {
+      method: "DELETE",
+    },
+    "Failed to delete fish image"
+  );
+}
+
+/* =========================================================
+   History APIs
+========================================================= */
+
+export async function createHistory(payload: HistoryCreatePayload) {
+  return requestJson<{ message: string; data: HistoryItem }>(
+    `${API_BASE_URL}/history`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    },
+    "Failed to create history"
+  );
+}
+
+export async function getHistory(userId: string): Promise<HistoryItem[]> {
+  const data = await requestJson<{ data: HistoryItem[] }>(
+    `${API_BASE_URL}/history/${userId}`,
+    undefined,
+    "Failed to fetch history"
+  );
+
+  return data.data || [];
+}
+
+export async function getPredictionHistory(userId: string): Promise<HistoryItem[]> {
+  const data = await requestJson<{ data: HistoryItem[] }>(
+    `${API_BASE_URL}/prediction/history/${userId}`,
+    undefined,
+    "Failed to fetch prediction history"
+  );
+
+  return data.data || [];
+}
+
+export async function deleteHistory(historyId: string | number) {
+  return requestJson<{ message: string }>(
+    `${API_BASE_URL}/history/${historyId}`,
+    {
+      method: "DELETE",
+    },
+    "Failed to delete history"
+  );
+}
+
+/* =========================================================
+   Profile APIs
+========================================================= */
+
+export async function getProfile(userId: string): Promise<Profile> {
+  return requestJson<Profile>(
+    `${API_BASE_URL}/profile/${userId}`,
+    undefined,
+    "Failed to fetch profile"
+  );
+}
+
+export async function updateProfile(
+  userId: string,
+  payload: ProfileUpdatePayload
+) {
+  return requestJson<{ message: string; data: Profile | null }>(
+    `${API_BASE_URL}/profile/${userId}`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    },
+    "Failed to update profile"
+  );
+}
+
+export async function uploadAvatar(userId: string, file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  return requestJson<{ message: string; avatar_url: string }>(
+    `${API_BASE_URL}/profile/${userId}/avatar`,
+    {
+      method: "POST",
+      body: formData,
+    },
+    "Failed to upload avatar"
+  );
+}
+
+export async function changePassword(userId: string, payload: {
+  current_password: string;
+  new_password: string;
+  confirm_password: string;
+}) {
+  return requestJson<{ message: string; data?: string }>(
+    `${API_BASE_URL}/profile/${userId}/password`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    },
+    "Failed to change password"
+  );
+}
+
+/* =========================================================
+   Auth APIs
+========================================================= */
+
+export async function signup(payload: {
+  email: string;
+  password: string;
+  display_name?: string;
+}) {
+  return requestJson<{ message: string; data: AuthResponseData }>(
+    `${API_BASE_URL}/auth/signup`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    },
+    "Signup failed"
+  );
+}
+
+export async function login(payload: AuthPayload) {
+  return requestJson<{ message: string; data: AuthResponseData }>(
+    `${API_BASE_URL}/auth/login`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    },
+    "Login failed"
+  );
+}
+
+export async function logout() {
+  return requestJson<{ message: string }>(
+    `${API_BASE_URL}/auth/logout`,
+    {
+      method: "POST",
+    },
+    "Logout failed"
+  );
+}
+
+/* =========================================================
+   Favorites APIs
+========================================================= */
+
+export async function getFavorites(userId: string): Promise<FavoriteItem[]> {
+  const data = await requestJson<{ data: FavoriteItem[] }>(
+    `${API_BASE_URL}/favorites/${userId}`,
+    undefined,
+    "Failed to fetch favorites"
+  );
+
+  return data.data || [];
+}
+
+export async function addFavorite(payload: FavoritePayload) {
+  return requestJson<{ message: string; data: FavoriteItem | null }>(
+    `${API_BASE_URL}/favorites`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    },
+    "Failed to add favorite"
+  );
+}
+
+export async function removeFavorite(userId: string, fishId: number) {
+  return requestJson<{ message: string }>(
+    `${API_BASE_URL}/favorites/${userId}/${fishId}`,
+    {
+      method: "DELETE",
+    },
+    "Failed to remove favorite"
+  );
+}
+
+/* =========================================================
+   Utility helpers for frontend matching
+========================================================= */
+
+export function normalizeFishName(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[_-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function findFishByPrediction(
+  fishList: FishListItem[],
+  predictedName: string
+): FishListItem | null {
+  const normalizedPrediction = normalizeFishName(predictedName);
+
+  return (
+    fishList.find((fish) => normalizeFishName(fish.name) === normalizedPrediction) ||
+    fishList.find((fish) => normalizeFishName(fish.slug) === normalizedPrediction) ||
+    fishList.find((fish) => normalizeFishName(fish.name).includes(normalizedPrediction)) ||
+    fishList.find((fish) => normalizeFishName(fish.slug).includes(normalizedPrediction)) ||
+    null
+  );
+}

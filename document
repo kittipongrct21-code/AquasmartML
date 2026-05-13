@@ -1,0 +1,10 @@
+cd /d D:\AquaSmart-ML\aquasmart-backend
+venv\Scripts\activate
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+
+
+
+
+cd /d D:\AquaSmart-ML\aquasmart-frontend
+rmdir /s /q .next
+npm run dev

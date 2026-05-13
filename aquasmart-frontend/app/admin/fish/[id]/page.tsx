@@ -1,208 +1,549 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { getAdminFishById } from "@/lib/api";
-import { FishDetailResponse } from "@/types/fish";
 
-const textOrDash = (value?: string | null) => value || "-";
+type FishImageItem = {
+  id: number;
+  fish_id: number;
+  image_url: string;
+  alt_text?: string | null;
+  is_cover?: boolean;
+};
+
+type FishRecord = {
+  id: number;
+  name: string;
+  slug: string;
+  short_description?: string | null;
+  type?: string | null;
+  category?: string | null;
+  habitat?: string | null;
+  identify_text?: string | null;
+  average_lifespan?: string | null;
+  adult_size?: string | null;
+  cover_image_url?: string | null;
+  is_active?: boolean;
+  origin?: string | null;
+};
+
+type FishDetailResponse = {
+  fish: FishRecord;
+  farmer_info?: Record<string, unknown> | null;
+  ornamental_info?: Record<string, unknown> | null;
+  images?: FishImageItem[];
+};
+
+type DetailTab = "general" | "farmer" | "ornamental" | "gallery";
+
+const HIDDEN_INFO_KEYS = new Set([
+  "id",
+  "fish_id",
+  "created_at",
+  "updated_at",
+  "cover_image_url",
+  "is_active",
+  "name",
+  "slug",
+  "short_description",
+  "type",
+  "category",
+  "habitat",
+  "identify_text",
+  "average_lifespan",
+  "adult_size",
+  "origin",
+]);
 
 export default function AdminFishDetailPage() {
-  const params = useParams();
-  const fishId = Number(params.id);
+  const params = useParams<{ id: string }>();
+  const fishId = Array.isArray(params?.id) ? params.id[0] : params?.id;
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [detail, setDetail] = useState<FishDetailResponse | null>(null);
+  const [data, setData] = useState<FishDetailResponse | null>(null);
+  const [tab, setTab] = useState<DetailTab>("general");
+  const [selectedImage, setSelectedImage] = useState("");
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        setLoading(true);
-        setError("");
-        const res = await getAdminFishById(fishId);
-        setDetail(res as FishDetailResponse);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load fish detail");
-      } finally {
-        setLoading(false);
-      }
-    };
+    let isMounted = true;
 
-    if (!Number.isNaN(fishId)) {
-      load();
+    async function loadFishDetail() {
+      if (!fishId) {
+        setErrorMessage("Fish ID is missing.");
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        setErrorMessage("");
+
+        const detail = (await getAdminFishById(fishId)) as FishDetailResponse;
+
+        if (!isMounted) return;
+
+        setData(detail);
+
+        const firstImage =
+          detail?.fish?.cover_image_url ||
+          detail?.images?.find((image) => image.is_cover)?.image_url ||
+          detail?.images?.[0]?.image_url ||
+          "";
+
+        setSelectedImage(firstImage);
+      } catch (error) {
+        console.error("Failed to load admin fish detail:", error);
+
+        if (!isMounted) return;
+
+        setErrorMessage(
+          error instanceof Error ? error.message : "Failed to load fish detail."
+        );
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
     }
+
+    loadFishDetail();
+
+    return () => {
+      isMounted = false;
+    };
   }, [fishId]);
 
-  if (loading) {
+  const fish = data?.fish;
+
+  const galleryImages = useMemo<FishImageItem[]>(() => {
+    if (!data?.images?.length) return [];
+
+    const uniqueMap = new Map<string, FishImageItem>();
+
+    data.images.forEach((image) => {
+      const key = `${image.id}-${image.image_url}`;
+      if (!uniqueMap.has(key)) {
+        uniqueMap.set(key, image);
+      }
+    });
+
+    return Array.from(uniqueMap.values());
+  }, [data?.images]);
+
+  const generalCards = useMemo(() => {
+    if (!fish) return [];
+
+    return [
+      { label: "Fish ID", value: String(fish.id) },
+      { label: "Slug", value: fish.slug || "Not available" },
+      { label: "Type", value: fish.type || "Not available" },
+      { label: "Category", value: fish.category || "Not available" },
+      { label: "Origin", value: fish.origin || "Not available" },
+      { label: "Habitat", value: fish.habitat || "Not available" },
+      {
+        label: "Average Lifespan",
+        value: fish.average_lifespan || "Not available",
+      },
+      { label: "Adult Size", value: fish.adult_size || "Not available" },
+      {
+        label: "Public Status",
+        value: fish.is_active ? "Active" : "Inactive",
+      },
+    ];
+  }, [fish]);
+
+  const farmerEntries = useMemo(() => {
+    return buildInfoEntries(data?.farmer_info || null);
+  }, [data?.farmer_info]);
+
+  const ornamentalEntries = useMemo(() => {
+    return buildInfoEntries(data?.ornamental_info || null);
+  }, [data?.ornamental_info]);
+
+  if (isLoading) {
     return (
-      <main className="min-h-screen bg-slate-50 p-6">
-        <div className="mx-auto max-w-6xl rounded-3xl bg-white p-6 shadow-sm text-slate-500">
-          Loading fish detail...
-        </div>
-      </main>
+      <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <p className="text-sm text-slate-500">Loading fish detail...</p>
+      </section>
     );
   }
 
-  if (error) {
+  if (errorMessage || !fish) {
     return (
-      <main className="min-h-screen bg-slate-50 p-6">
-        <div className="mx-auto max-w-6xl rounded-3xl border border-red-200 bg-red-50 p-6 text-red-600">
-          {error}
+      <section className="space-y-6">
+        <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-blue-600">Admin</p>
+              <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900">
+                Fish Detail
+              </h1>
+            </div>
+
+            <Link
+              href="/admin/fish"
+              className="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
+            >
+              Back to Fish Management
+            </Link>
+          </div>
         </div>
-      </main>
+
+        <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+          <div className="rounded-2xl bg-rose-50 px-4 py-4 text-sm text-rose-700">
+            {errorMessage || "Fish not found."}
+          </div>
+        </div>
+      </section>
     );
   }
 
-  if (!detail) {
-    return (
-      <main className="min-h-screen bg-slate-50 p-6">
-        <div className="mx-auto max-w-6xl rounded-3xl bg-white p-6 shadow-sm text-slate-500">
-          Fish not found.
-        </div>
-      </main>
-    );
-  }
-
-  const { fish, farmer_info, ornamental_info, images = [] } = detail;
-  const cover = fish.cover_image_url || images.find((img) => img.is_cover)?.image_url;
+  const displayImage =
+    selectedImage ||
+    fish.cover_image_url ||
+    galleryImages.find((image) => image.is_cover)?.image_url ||
+    galleryImages[0]?.image_url ||
+    "";
 
   return (
-    <main className="min-h-screen bg-slate-50 p-6">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <section className="rounded-3xl bg-white p-6 shadow-sm">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900">{fish.name}</h1>
-              <p className="mt-2 text-sm text-slate-500">Admin fish preview page</p>
-            </div>
+    <section className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Link
+          href="/admin/fish"
+          className="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50"
+        >
+          Back to Fish Management
+        </Link>
 
-            <div className="flex gap-3">
-              <Link
-                href="/admin/fish"
-                className="rounded-2xl border border-slate-200 px-4 py-2 text-sm text-slate-700"
-              >
-                Back
-              </Link>
-              <Link
-                href={`/admin/fish/${fish.id}/edit`}
-                className="rounded-2xl bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
-              >
-                Edit
-              </Link>
-            </div>
-          </div>
-        </section>
+        <div className="flex flex-wrap gap-3">
+          <Link
+            href={`/fish/${fish.id}`}
+            className="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50"
+          >
+            View Public Page
+          </Link>
 
-        <section className="grid gap-6 lg:grid-cols-[360px_1fr]">
-          <div className="rounded-3xl bg-white p-6 shadow-sm">
-            {cover ? (
-              <img
-                src={cover}
-                alt={fish.name}
-                className="h-72 w-full rounded-2xl object-cover"
-              />
-            ) : (
-              <div className="flex h-72 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
-                No cover image
-              </div>
-            )}
+          <Link
+            href={`/admin/fish/${fish.id}/edit`}
+            className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+          >
+            Edit Fish
+          </Link>
+        </div>
+      </div>
 
-            <div className="mt-4 flex items-center gap-3">
-              <span
-                className={`rounded-full px-3 py-1 text-xs font-medium ${
-                  fish.is_active ? "bg-green-100 text-green-700" : "bg-slate-200 text-slate-700"
-                }`}
-              >
-                {fish.is_active ? "Active" : "Inactive"}
-              </span>
-              <span className="text-sm text-slate-500">Slug: {fish.slug}</span>
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            <section className="rounded-3xl bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-semibold text-slate-900">Basic Information</h2>
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <div><p className="text-xs text-slate-500">Type</p><p className="mt-1 text-sm text-slate-900">{textOrDash(fish.type)}</p></div>
-                <div><p className="text-xs text-slate-500">Category</p><p className="mt-1 text-sm text-slate-900">{textOrDash(fish.category)}</p></div>
-                <div><p className="text-xs text-slate-500">Habitat</p><p className="mt-1 text-sm text-slate-900">{textOrDash(fish.habitat)}</p></div>
-                <div><p className="text-xs text-slate-500">Average Lifespan</p><p className="mt-1 text-sm text-slate-900">{textOrDash(fish.average_lifespan)}</p></div>
-                <div><p className="text-xs text-slate-500">Adult Size</p><p className="mt-1 text-sm text-slate-900">{textOrDash(fish.adult_size)}</p></div>
-              </div>
-
-              <div className="mt-5 grid gap-5">
-                <div>
-                  <p className="text-xs text-slate-500">Short Description</p>
-                  <p className="mt-1 text-sm leading-6 text-slate-900">{textOrDash(fish.short_description)}</p>
+      <section className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
+        <div className="grid gap-0 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="bg-slate-50 p-4">
+            <div className="flex min-h-[320px] items-center justify-center overflow-hidden rounded-3xl bg-white">
+              {displayImage ? (
+                <img
+                  src={displayImage}
+                  alt={fish.name}
+                  className="h-full max-h-[420px] w-full object-contain"
+                />
+              ) : (
+                <div className="px-6 py-10 text-center">
+                  <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-blue-50 text-2xl font-bold text-blue-600">
+                    AS
+                  </div>
+                  <p className="mt-4 text-sm font-semibold text-slate-700">
+                    No image available
+                  </p>
                 </div>
-                <div>
-                  <p className="text-xs text-slate-500">How to Identify</p>
-                  <p className="mt-1 text-sm leading-6 text-slate-900">{textOrDash(fish.identify_text)}</p>
-                </div>
-              </div>
-            </section>
+              )}
+            </div>
 
-            <section className="rounded-3xl bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-semibold text-slate-900">Farmer Information</h2>
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <div><p className="text-xs text-slate-500">How to Raise</p><p className="mt-1 text-sm text-slate-900">{textOrDash(farmer_info?.how_to_raise)}</p></div>
-                <div><p className="text-xs text-slate-500">Pond Type</p><p className="mt-1 text-sm text-slate-900">{textOrDash(farmer_info?.pond_type)}</p></div>
-                <div><p className="text-xs text-slate-500">Pond Size</p><p className="mt-1 text-sm text-slate-900">{textOrDash(farmer_info?.pond_size)}</p></div>
-                <div><p className="text-xs text-slate-500">Population per Pond</p><p className="mt-1 text-sm text-slate-900">{textOrDash(farmer_info?.population_per_pond)}</p></div>
-                <div><p className="text-xs text-slate-500">Water Temp</p><p className="mt-1 text-sm text-slate-900">{textOrDash(farmer_info?.water_temp)}</p></div>
-                <div><p className="text-xs text-slate-500">pH</p><p className="mt-1 text-sm text-slate-900">{textOrDash(farmer_info?.ph)}</p></div>
-                <div><p className="text-xs text-slate-500">Water Prep</p><p className="mt-1 text-sm text-slate-900">{textOrDash(farmer_info?.water_prep)}</p></div>
-                <div><p className="text-xs text-slate-500">Recommended Food</p><p className="mt-1 text-sm text-slate-900">{textOrDash(farmer_info?.recommended_food)}</p></div>
-                <div><p className="text-xs text-slate-500">Not Recommended Food</p><p className="mt-1 text-sm text-slate-900">{textOrDash(farmer_info?.not_recommended_food)}</p></div>
-                <div><p className="text-xs text-slate-500">Feeding Frequency</p><p className="mt-1 text-sm text-slate-900">{textOrDash(farmer_info?.feeding_frequency)}</p></div>
-              </div>
-            </section>
+            {galleryImages.length > 0 ? (
+              <div className="mt-4 flex gap-3 overflow-x-auto pb-1">
+                {galleryImages.map((image) => {
+                  const active = selectedImage === image.image_url;
 
-            <section className="rounded-3xl bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-semibold text-slate-900">Ornamental Information</h2>
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <div><p className="text-xs text-slate-500">Environment</p><p className="mt-1 text-sm text-slate-900">{textOrDash(ornamental_info?.environment)}</p></div>
-                <div><p className="text-xs text-slate-500">Population</p><p className="mt-1 text-sm text-slate-900">{textOrDash(ornamental_info?.population)}</p></div>
-                <div><p className="text-xs text-slate-500">Water Temp</p><p className="mt-1 text-sm text-slate-900">{textOrDash(ornamental_info?.water_temp)}</p></div>
-                <div><p className="text-xs text-slate-500">pH</p><p className="mt-1 text-sm text-slate-900">{textOrDash(ornamental_info?.ph)}</p></div>
-                <div><p className="text-xs text-slate-500">Preparation</p><p className="mt-1 text-sm text-slate-900">{textOrDash(ornamental_info?.preparation)}</p></div>
-                <div><p className="text-xs text-slate-500">Recommended Food</p><p className="mt-1 text-sm text-slate-900">{textOrDash(ornamental_info?.recommended_food)}</p></div>
-                <div><p className="text-xs text-slate-500">Feeding Frequency</p><p className="mt-1 text-sm text-slate-900">{textOrDash(ornamental_info?.feeding_frequency)}</p></div>
-                <div><p className="text-xs text-slate-500">Feeding Amount</p><p className="mt-1 text-sm text-slate-900">{textOrDash(ornamental_info?.feeding_amount)}</p></div>
-              </div>
-            </section>
-
-            <section className="rounded-3xl bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-semibold text-slate-900">Gallery</h2>
-              <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {images.length === 0 ? (
-                  <p className="text-sm text-slate-500">No images</p>
-                ) : (
-                  images.map((image) => (
-                    <div key={image.id} className="rounded-2xl border border-slate-200 p-3">
+                  return (
+                    <button
+                      key={image.id}
+                      type="button"
+                      onClick={() => setSelectedImage(image.image_url)}
+                      className={
+                        active
+                          ? "overflow-hidden rounded-2xl ring-2 ring-blue-500"
+                          : "overflow-hidden rounded-2xl ring-1 ring-slate-200"
+                      }
+                    >
                       <img
                         src={image.image_url}
                         alt={image.alt_text || fish.name}
-                        className="h-40 w-full rounded-xl object-cover"
+                        className="h-20 w-20 object-cover"
                       />
-                      <div className="mt-3 flex items-center justify-between gap-2">
-                        <p className="text-sm text-slate-700">{image.alt_text || "-"}</p>
-                        {image.is_cover ? (
-                          <span className="rounded-full bg-green-100 px-2 py-1 text-xs text-green-700">
-                            Cover
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-                  ))
-                )}
+                    </button>
+                  );
+                })}
               </div>
-            </section>
+            ) : null}
+          </div>
+
+          <div className="p-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-blue-600">Admin Detail</p>
+                <h1 className="mt-2 text-4xl font-extrabold tracking-tight text-slate-900">
+                  {fish.name}
+                </h1>
+              </div>
+
+              <span
+                className={
+                  fish.is_active
+                    ? "rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-green-700"
+                    : "rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600"
+                }
+              >
+                {fish.is_active ? "Active" : "Inactive"}
+              </span>
+            </div>
+
+            <p className="mt-4 text-sm leading-7 text-slate-600">
+              {fish.short_description || "No description available."}
+            </p>
+
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <InfoBox label="Type" value={fish.type || "Not available"} />
+              <InfoBox
+                label="Category"
+                value={fish.category || "Not available"}
+              />
+              <InfoBox label="Origin" value={fish.origin || "Not available"} />
+              <InfoBox label="Habitat" value={fish.habitat || "Not available"} />
+            </div>
+
+            {fish.identify_text ? (
+              <div className="mt-6 rounded-2xl bg-slate-50 px-4 py-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                  Identify Text
+                </p>
+                <p className="mt-2 text-sm leading-7 text-slate-700">
+                  {fish.identify_text}
+                </p>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+        <div className="flex flex-wrap gap-2">
+          <TabButton
+            active={tab === "general"}
+            label="General"
+            onClick={() => setTab("general")}
+          />
+          <TabButton
+            active={tab === "farmer"}
+            label="Farmer"
+            onClick={() => setTab("farmer")}
+          />
+          <TabButton
+            active={tab === "ornamental"}
+            label="Ornamental"
+            onClick={() => setTab("ornamental")}
+          />
+          <TabButton
+            active={tab === "gallery"}
+            label="Gallery"
+            onClick={() => setTab("gallery")}
+          />
+        </div>
+      </section>
+
+      {tab === "general" ? (
+        <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+          <h2 className="text-xl font-bold text-slate-900">
+            General Information
+          </h2>
+
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {generalCards.map((item) => (
+              <InfoBox key={item.label} label={item.label} value={item.value} />
+            ))}
+          </div>
+
+          <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-4">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+              Identification Notes
+            </p>
+            <p className="mt-2 text-sm leading-7 text-slate-700">
+              {fish.identify_text || "Not available"}
+            </p>
           </div>
         </section>
-      </div>
-    </main>
+      ) : null}
+
+      {tab === "farmer" ? (
+        <DetailSection
+          title="Farmer Information"
+          emptyMessage="No farmer information is available for this fish yet."
+          items={farmerEntries}
+        />
+      ) : null}
+
+      {tab === "ornamental" ? (
+        <DetailSection
+          title="Ornamental Information"
+          emptyMessage="No ornamental information is available for this fish yet."
+          items={ornamentalEntries}
+        />
+      ) : null}
+
+      {tab === "gallery" ? (
+        <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-xl font-bold text-slate-900">Gallery</h2>
+
+            <div className="flex flex-wrap gap-3">
+              <div className="rounded-2xl bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700">
+                {galleryImages.length} image{galleryImages.length === 1 ? "" : "s"}
+              </div>
+
+              <Link
+                href={`/admin/fish/${fish.id}/edit`}
+                className="rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+              >
+                Manage Gallery
+              </Link>
+            </div>
+          </div>
+
+          {galleryImages.length === 0 ? (
+            <div className="mt-5 rounded-2xl bg-slate-50 px-4 py-4 text-sm text-slate-600">
+              No images uploaded yet.
+            </div>
+          ) : (
+            <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {galleryImages.map((image) => (
+                <article
+                  key={image.id}
+                  className="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm"
+                >
+                  <div className="flex h-56 items-center justify-center overflow-hidden bg-slate-50">
+                    <img
+                      src={image.image_url}
+                      alt={image.alt_text || fish.name}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+
+                  <div className="p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-sm font-semibold text-slate-800">
+                        {image.alt_text || "Fish image"}
+                      </p>
+
+                      {image.is_cover ? (
+                        <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+                          Cover
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      ) : null}
+    </section>
   );
+}
+
+function TabButton({
+  active,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={
+        active
+          ? "rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white"
+          : "rounded-2xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
+      }
+    >
+      {label}
+    </button>
+  );
+}
+
+function InfoBox({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-slate-50 px-4 py-4">
+      <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+        {label}
+      </p>
+      <p className="mt-2 text-sm font-semibold leading-7 text-slate-800">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function DetailSection({
+  title,
+  emptyMessage,
+  items,
+}: {
+  title: string;
+  emptyMessage: string;
+  items: Array<{ label: string; value: string }>;
+}) {
+  return (
+    <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+      <h2 className="text-xl font-bold text-slate-900">{title}</h2>
+
+      {items.length === 0 ? (
+        <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-4 text-sm text-slate-600">
+          {emptyMessage}
+        </div>
+      ) : (
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {items.map((item) => (
+            <InfoBox key={item.label} label={item.label} value={item.value} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function buildInfoEntries(
+  source: Record<string, unknown> | null
+): Array<{ label: string; value: string }> {
+  if (!source) return [];
+
+  return Object.entries(source)
+    .filter(([key, value]) => {
+      if (HIDDEN_INFO_KEYS.has(key)) return false;
+      if (value === null || value === undefined) return false;
+      if (typeof value === "string" && value.trim() === "") return false;
+      return true;
+    })
+    .map(([key, value]) => ({
+      label: humanizeKey(key),
+      value: String(value),
+    }));
+}
+
+function humanizeKey(value: string) {
+  return value
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 }

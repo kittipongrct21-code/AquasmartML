@@ -1,0 +1,23 @@
+{
+  "project": "AquaSmart ML",
+  "task": "classification",
+  "framework": "ultralytics",
+  "architecture": "yolov8-cls",
+  "model_file": "aquasmart_best.pt",
+  "class_names_file": "class_names.json",
+  "image_size": 320,
+  "rgb": true,
+  "top_k": 3,
+  "labels": [
+    "Bangus",
+    "Black Spotted Barb",
+    "Catfish",
+    "Fourfinger Threadfin",
+    "Gold Fish",
+    "Gourami",
+    "Green Spotted Puffer",
+    "Jaguar Gapote",
+    "Knifefish",
+    "Snakehead"
+  ]
+}

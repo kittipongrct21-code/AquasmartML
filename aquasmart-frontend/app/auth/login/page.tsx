@@ -1,0 +1,212 @@
+"use client";
+
+import { FormEvent, useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { getProfile } from "@/lib/api";
+import { supabase } from "@/lib/supabase-client";
+import { useToast } from "@/components/providers/ToastProvider";
+
+export default function LoginPage() {
+  const router = useRouter();
+  const { showError, showSuccess, showWarning } = useToast();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function bootstrap() {
+      try {
+        setIsCheckingSession(true);
+
+        const sessionData = await supabase.auth.getSession();
+        const user = sessionData.data.session?.user ?? null;
+
+        if (!isMounted) return;
+
+        if (user) {
+          try {
+            const profile = await getProfile(user.id);
+
+            if (!isMounted) return;
+
+            if (profile?.role === "admin") {
+              router.replace("/admin/fish");
+              return;
+            }
+          } catch (error) {
+            console.warn("Login page profile redirect fallback:", error);
+          }
+
+          router.replace("/profile");
+        }
+      } catch (error) {
+        console.error("Failed to check session:", error);
+      } finally {
+        if (isMounted) {
+          setIsCheckingSession(false);
+        }
+      }
+    }
+
+    bootstrap();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [router]);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!email.trim() || !password) {
+      showWarning("Please enter both email and password.");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      const user = data.user;
+
+      if (!user) {
+        throw new Error("Login succeeded but user session was not returned.");
+      }
+
+      showSuccess("Signed in successfully.");
+
+      try {
+        const profile = await getProfile(user.id);
+
+        if (profile?.role === "admin") {
+          router.push("/admin/fish");
+          router.refresh();
+          return;
+        }
+      } catch (error) {
+        console.warn("Login role lookup fallback:", error);
+      }
+
+      router.push("/profile");
+      router.refresh();
+    } catch (error) {
+      console.error("Failed to sign in:", error);
+      showError(error instanceof Error ? error.message : "Failed to sign in.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  if (isCheckingSession) {
+    return (
+      <main className="min-h-screen px-4 py-8">
+        <section className="mx-auto max-w-md rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+          <p className="text-sm text-slate-500">Checking session...</p>
+        </section>
+      </main>
+    );
+  }
+
+  return (
+    <main className="min-h-screen px-4 py-8">
+      <section className="mx-auto max-w-md space-y-6">
+        <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+          <p className="text-sm font-semibold text-blue-600">Auth</p>
+          <h1 className="mt-2 text-4xl font-extrabold tracking-tight text-slate-900">
+            Sign In
+          </h1>
+          <p className="mt-3 text-sm leading-7 text-slate-600">
+            Sign in to access your profile, prediction history, and protected
+            pages.
+          </p>
+        </section>
+
+        <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label
+                htmlFor="email"
+                className="mb-2 block text-sm font-semibold text-slate-700"
+              >
+                Email
+              </label>
+              <input
+                id="email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="Enter your email"
+                className="block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="password"
+                className="mb-2 block text-sm font-semibold text-slate-700"
+              >
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="Enter your password"
+                className="block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+              >
+                {isSubmitting ? "Signing in..." : "Sign In"}
+              </button>
+
+              <Link
+                href="/"
+                className="rounded-2xl bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
+              >
+                Back to Home
+              </Link>
+            </div>
+          </form>
+        </section>
+
+        <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+          <p className="text-sm text-slate-600">
+            Don&apos;t have an account yet?
+          </p>
+
+          <div className="mt-4">
+            <Link
+              href="/auth/signup"
+              className="inline-flex rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
+            >
+              Create Account
+            </Link>
+          </div>
+        </section>
+      </section>
+    </main>
+  );
+}

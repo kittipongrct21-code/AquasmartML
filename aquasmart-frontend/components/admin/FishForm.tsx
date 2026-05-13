@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createFish, updateFish, uploadImage } from "@/lib/api";
 import { FishPayload } from "@/types/fish";
@@ -15,74 +15,10 @@ type FishFormProps = {
 
 const inputClass =
   "w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-blue-500";
+const textareaClass =
+  "w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-blue-500";
 const labelClass = "mb-2 block text-sm font-medium text-slate-700";
 const sectionTitleClass = "text-lg font-semibold text-slate-900";
-const textareaClass = `${inputClass} resize-y`;
-
-const generalTextareas: Array<{
-  key: "short_description" | "identify_text";
-  label: string;
-  rows?: number;
-}> = [
-  { key: "short_description", label: "Short Description", rows: 4 },
-  { key: "identify_text", label: "How to Identify", rows: 4 },
-];
-
-const farmerFields: Array<{
-  key: keyof NonNullable<FishPayload["farmer"]>;
-  label: string;
-  kind?: "input" | "textarea";
-  rows?: number;
-}> = [
-  { key: "how_to_raise", label: "How to Raise", kind: "textarea", rows: 4 },
-  { key: "pond_type", label: "Pond Type" },
-  { key: "pond_size", label: "Pond Size" },
-  { key: "population_per_pond", label: "Population per Pond" },
-  { key: "water_temp", label: "Water Temperature" },
-  { key: "ph", label: "pH" },
-  { key: "water_prep", label: "Water Preparation", kind: "textarea", rows: 4 },
-  { key: "source_type", label: "Source Type" },
-  { key: "source_size", label: "Source Size" },
-  { key: "system_type", label: "System Type" },
-  { key: "compatible_species", label: "Compatible Species", kind: "textarea", rows: 3 },
-  { key: "incompatible_species", label: "Incompatible Species", kind: "textarea", rows: 3 },
-  { key: "growth_rate", label: "Growth Rate" },
-  { key: "survival_rate", label: "Survival Rate" },
-  { key: "common_diseases", label: "Common Diseases", kind: "textarea", rows: 4 },
-  { key: "disease_prevention", label: "Disease Prevention", kind: "textarea", rows: 4 },
-  { key: "recommended_food", label: "Recommended Food", kind: "textarea", rows: 4 },
-  { key: "not_recommended_food", label: "Not Recommended Food", kind: "textarea", rows: 4 },
-  { key: "feeding_amount", label: "Feeding Amount" },
-  { key: "feeding_frequency", label: "Feeding Frequency" },
-  { key: "notes", label: "Notes", kind: "textarea", rows: 4 },
-];
-
-const ornamentalFields: Array<{
-  key: keyof NonNullable<FishPayload["ornamental"]>;
-  label: string;
-  kind?: "input" | "textarea";
-  rows?: number;
-}> = [
-  { key: "environment", label: "Environment", kind: "textarea", rows: 4 },
-  { key: "population", label: "Population" },
-  { key: "water_temp", label: "Water Temperature" },
-  { key: "ph", label: "pH" },
-  { key: "preparation", label: "Preparation", kind: "textarea", rows: 4 },
-  { key: "source_type", label: "Source Type" },
-  { key: "source_size", label: "Source Size" },
-  { key: "system_type", label: "System Type" },
-  { key: "compatible_species", label: "Compatible Species", kind: "textarea", rows: 3 },
-  { key: "incompatible_species", label: "Incompatible Species", kind: "textarea", rows: 3 },
-  { key: "growth_rate", label: "Growth Rate" },
-  { key: "survival_rate", label: "Survival Rate" },
-  { key: "common_diseases", label: "Common Diseases", kind: "textarea", rows: 4 },
-  { key: "disease_prevention", label: "Disease Prevention", kind: "textarea", rows: 4 },
-  { key: "recommended_food", label: "Recommended Food", kind: "textarea", rows: 4 },
-  { key: "not_recommended_food", label: "Not Recommended Food", kind: "textarea", rows: 4 },
-  { key: "feeding_amount", label: "Feeding Amount" },
-  { key: "feeding_frequency", label: "Feeding Frequency" },
-  { key: "notes", label: "Notes", kind: "textarea", rows: 4 },
-];
 
 const emptyData: FishPayload = {
   general: {
@@ -92,12 +28,12 @@ const emptyData: FishPayload = {
     type: "",
     category: "",
     habitat: "",
-    origin: "",
     identify_text: "",
     average_lifespan: "",
     adult_size: "",
     cover_image_url: "",
     is_active: true,
+    origin: "",
   },
   farmer: {
     how_to_raise: "",
@@ -107,19 +43,19 @@ const emptyData: FishPayload = {
     water_temp: "",
     ph: "",
     water_prep: "",
+    recommended_food: "",
+    not_recommended_food: "",
+    feeding_frequency: "",
+    feeding_amount: "",
+    compatible_species: "",
+    growth_rate: "",
+    common_diseases: "",
+    disease_prevention: "",
     source_type: "",
     source_size: "",
     system_type: "",
-    compatible_species: "",
     incompatible_species: "",
-    growth_rate: "",
     survival_rate: "",
-    common_diseases: "",
-    disease_prevention: "",
-    recommended_food: "",
-    not_recommended_food: "",
-    feeding_amount: "",
-    feeding_frequency: "",
     notes: "",
   },
   ornamental: {
@@ -128,19 +64,19 @@ const emptyData: FishPayload = {
     water_temp: "",
     ph: "",
     preparation: "",
-    source_type: "",
-    source_size: "",
-    system_type: "",
-    compatible_species: "",
-    incompatible_species: "",
-    growth_rate: "",
-    survival_rate: "",
-    common_diseases: "",
-    disease_prevention: "",
     recommended_food: "",
-    not_recommended_food: "",
     feeding_frequency: "",
     feeding_amount: "",
+    source_type: "",
+    source_size: "",
+    compatible_species: "",
+    growth_rate: "",
+    common_diseases: "",
+    disease_prevention: "",
+    system_type: "",
+    incompatible_species: "",
+    survival_rate: "",
+    not_recommended_food: "",
     notes: "",
   },
 };
@@ -159,7 +95,36 @@ export default function FishForm({
   const [success, setSuccess] = useState("");
   const [uploadingImage, setUploadingImage] = useState(false);
 
-  const coverImageUrl = coverImageOverride ?? form.general.cover_image_url ?? "";
+  useEffect(() => {
+    if (initialData) {
+      setForm({
+        general: {
+          ...emptyData.general,
+          ...initialData.general,
+        },
+        farmer: {
+          ...emptyData.farmer,
+          ...initialData.farmer,
+        },
+        ornamental: {
+          ...emptyData.ornamental,
+          ...initialData.ornamental,
+        },
+      });
+    }
+  }, [initialData]);
+
+  useEffect(() => {
+    if (typeof coverImageOverride === "string") {
+      setForm((prev) => ({
+        ...prev,
+        general: {
+          ...prev.general,
+          cover_image_url: coverImageOverride,
+        },
+      }));
+    }
+  }, [coverImageOverride]);
 
   const updateGeneral = (
     key: keyof FishPayload["general"],
@@ -225,43 +190,12 @@ export default function FishForm({
     setError("");
     setSuccess("");
 
-    const cleanData = (obj: any): any => {
-      if (Array.isArray(obj)) return obj;
-      if (obj === null || typeof obj !== "object") {
-        return obj === "" ? null : obj;
-      }
-      const cleaned: any = {};
-      for (const [key, value] of Object.entries(obj)) {
-        if (value === "") {
-          cleaned[key] = null;
-        } else if (typeof value === "object" && value !== null) {
-          cleaned[key] = cleanData(value);
-        } else {
-          cleaned[key] = value;
-        }
-      }
-      return cleaned;
-    };
-
     try {
-      const payloadData = cleanData({
-        ...form,
-        general: {
-          ...form.general,
-          cover_image_url: coverImageUrl,
-        },
-      });
-
-      // Name and slug must not be null as they are required fields.
-      // (The HTML form validation handles this, but we reset here just in case)
-      if (!payloadData.general.name) payloadData.general.name = "";
-      if (!payloadData.general.slug) payloadData.general.slug = "";
-
       if (mode === "edit" && fishId) {
-        await updateFish(fishId, payloadData);
+        await updateFish(fishId, form);
         setSuccess("Fish updated successfully");
       } else {
-        await createFish(payloadData);
+        await createFish(form);
         setSuccess("Fish created successfully");
       }
 
@@ -279,6 +213,7 @@ export default function FishForm({
     <form onSubmit={handleSubmit} className="space-y-8">
       <section className="rounded-3xl bg-white p-6 shadow-sm">
         <h2 className={sectionTitleClass}>General Information</h2>
+
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           <div>
             <label className={labelClass}>Name</label>
@@ -289,6 +224,7 @@ export default function FishForm({
               required
             />
           </div>
+
           <div>
             <label className={labelClass}>Slug</label>
             <input
@@ -298,6 +234,7 @@ export default function FishForm({
               required
             />
           </div>
+
           <div>
             <label className={labelClass}>Type</label>
             <input
@@ -306,6 +243,7 @@ export default function FishForm({
               onChange={(e) => updateGeneral("type", e.target.value)}
             />
           </div>
+
           <div>
             <label className={labelClass}>Category</label>
             <input
@@ -314,14 +252,7 @@ export default function FishForm({
               onChange={(e) => updateGeneral("category", e.target.value)}
             />
           </div>
-          <div>
-            <label className={labelClass}>Habitat</label>
-            <input
-              className={inputClass}
-              value={form.general.habitat || ""}
-              onChange={(e) => updateGeneral("habitat", e.target.value)}
-            />
-          </div>
+
           <div>
             <label className={labelClass}>Origin</label>
             <input
@@ -330,6 +261,16 @@ export default function FishForm({
               onChange={(e) => updateGeneral("origin", e.target.value)}
             />
           </div>
+
+          <div>
+            <label className={labelClass}>Habitat</label>
+            <input
+              className={inputClass}
+              value={form.general.habitat || ""}
+              onChange={(e) => updateGeneral("habitat", e.target.value)}
+            />
+          </div>
+
           <div>
             <label className={labelClass}>Average Lifespan</label>
             <input
@@ -338,6 +279,7 @@ export default function FishForm({
               onChange={(e) => updateGeneral("average_lifespan", e.target.value)}
             />
           </div>
+
           <div>
             <label className={labelClass}>Adult Size</label>
             <input
@@ -348,10 +290,32 @@ export default function FishForm({
           </div>
 
           <div className="md:col-span-2">
+            <label className={labelClass}>Short Description</label>
+            <textarea
+              className={textareaClass}
+              rows={3}
+              value={form.general.short_description || ""}
+              onChange={(e) =>
+                updateGeneral("short_description", e.target.value)
+              }
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className={labelClass}>How to Identify</label>
+            <textarea
+              className={textareaClass}
+              rows={3}
+              value={form.general.identify_text || ""}
+              onChange={(e) => updateGeneral("identify_text", e.target.value)}
+            />
+          </div>
+
+          <div className="md:col-span-2">
             <label className={labelClass}>Cover Image URL</label>
             <input
               className={inputClass}
-              value={coverImageUrl}
+              value={form.general.cover_image_url || ""}
               onChange={(e) => {
                 updateGeneral("cover_image_url", e.target.value);
                 onCoverImageChange?.(e.target.value);
@@ -367,16 +331,18 @@ export default function FishForm({
                 onChange={handleImageUpload}
                 className="block w-full text-sm text-slate-600"
               />
-              <p className="mt-2 text-xs text-slate-500">Allowed: JPG, PNG, WEBP</p>
+              <p className="mt-2 text-xs text-slate-500">
+                Allowed: JPG, PNG, WEBP
+              </p>
               {uploadingImage ? (
                 <p className="mt-2 text-sm text-blue-600">Uploading image...</p>
               ) : null}
             </div>
 
-            {coverImageUrl ? (
+            {form.general.cover_image_url ? (
               <div className="mt-4">
                 <img
-                  src={coverImageUrl}
+                  src={form.general.cover_image_url}
                   alt="Preview"
                   className="h-32 w-48 rounded-xl border border-slate-200 object-cover"
                 />
@@ -384,17 +350,6 @@ export default function FishForm({
             ) : null}
           </div>
 
-          {generalTextareas.map((field) => (
-            <div key={field.key} className="md:col-span-2">
-              <label className={labelClass}>{field.label}</label>
-              <textarea
-                className={textareaClass}
-                rows={field.rows || 4}
-                value={form.general[field.key] || ""}
-                onChange={(e) => updateGeneral(field.key, e.target.value)}
-              />
-            </div>
-          ))}
           <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
             <input
               type="checkbox"
@@ -408,57 +363,427 @@ export default function FishForm({
 
       <section className="rounded-3xl bg-white p-6 shadow-sm">
         <h2 className={sectionTitleClass}>Farmer Information</h2>
+
         <div className="mt-6 grid gap-4 md:grid-cols-2">
-          {farmerFields.map((field) => (
-            <div
-              key={field.key}
-              className={field.kind === "textarea" ? "md:col-span-2" : undefined}
-            >
-              <label className={labelClass}>{field.label}</label>
-              {field.kind === "textarea" ? (
-                <textarea
-                  className={textareaClass}
-                  rows={field.rows || 4}
-                  value={form.farmer?.[field.key] || ""}
-                  onChange={(e) => updateFarmer(field.key, e.target.value)}
-                />
-              ) : (
-                <input
-                  className={inputClass}
-                  value={form.farmer?.[field.key] || ""}
-                  onChange={(e) => updateFarmer(field.key, e.target.value)}
-                />
-              )}
-            </div>
-          ))}
+          <div>
+            <label className={labelClass}>How to Raise</label>
+            <textarea
+              className={textareaClass}
+              rows={3}
+              value={form.farmer?.how_to_raise || ""}
+              onChange={(e) => updateFarmer("how_to_raise", e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>Source Type</label>
+            <input
+              className={inputClass}
+              value={form.farmer?.source_type || ""}
+              onChange={(e) => updateFarmer("source_type", e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>Source Size</label>
+            <input
+              className={inputClass}
+              value={form.farmer?.source_size || ""}
+              onChange={(e) => updateFarmer("source_size", e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>Pond Type</label>
+            <input
+              className={inputClass}
+              value={form.farmer?.pond_type || ""}
+              onChange={(e) => updateFarmer("pond_type", e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>Pond Size</label>
+            <input
+              className={inputClass}
+              value={form.farmer?.pond_size || ""}
+              onChange={(e) => updateFarmer("pond_size", e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>Population per Pond</label>
+            <input
+              className={inputClass}
+              value={form.farmer?.population_per_pond || ""}
+              onChange={(e) =>
+                updateFarmer("population_per_pond", e.target.value)
+              }
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>System Type</label>
+            <input
+              className={inputClass}
+              value={form.farmer?.system_type || ""}
+              onChange={(e) => updateFarmer("system_type", e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>Compatible Species</label>
+            <textarea
+              className={textareaClass}
+              rows={3}
+              value={form.farmer?.compatible_species || ""}
+              onChange={(e) =>
+                updateFarmer("compatible_species", e.target.value)
+              }
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>Incompatible Species</label>
+            <textarea
+              className={textareaClass}
+              rows={3}
+              value={form.farmer?.incompatible_species || ""}
+              onChange={(e) =>
+                updateFarmer("incompatible_species", e.target.value)
+              }
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>Water Temperature</label>
+            <input
+              className={inputClass}
+              value={form.farmer?.water_temp || ""}
+              onChange={(e) => updateFarmer("water_temp", e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>pH</label>
+            <input
+              className={inputClass}
+              value={form.farmer?.ph || ""}
+              onChange={(e) => updateFarmer("ph", e.target.value)}
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className={labelClass}>Water Preparation</label>
+            <textarea
+              className={textareaClass}
+              rows={3}
+              value={form.farmer?.water_prep || ""}
+              onChange={(e) => updateFarmer("water_prep", e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>Growth Rate</label>
+            <input
+              className={inputClass}
+              value={form.farmer?.growth_rate || ""}
+              onChange={(e) => updateFarmer("growth_rate", e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>Survival Rate</label>
+            <input
+              className={inputClass}
+              value={form.farmer?.survival_rate || ""}
+              onChange={(e) => updateFarmer("survival_rate", e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>Recommended Food</label>
+            <textarea
+              className={textareaClass}
+              rows={3}
+              value={form.farmer?.recommended_food || ""}
+              onChange={(e) =>
+                updateFarmer("recommended_food", e.target.value)
+              }
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>Not Recommended Food</label>
+            <textarea
+              className={textareaClass}
+              rows={3}
+              value={form.farmer?.not_recommended_food || ""}
+              onChange={(e) =>
+                updateFarmer("not_recommended_food", e.target.value)
+              }
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>Feeding Frequency</label>
+            <input
+              className={inputClass}
+              value={form.farmer?.feeding_frequency || ""}
+              onChange={(e) =>
+                updateFarmer("feeding_frequency", e.target.value)
+              }
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>Feeding Amount</label>
+            <input
+              className={inputClass}
+              value={form.farmer?.feeding_amount || ""}
+              onChange={(e) => updateFarmer("feeding_amount", e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>Common Diseases</label>
+            <textarea
+              className={textareaClass}
+              rows={3}
+              value={form.farmer?.common_diseases || ""}
+              onChange={(e) => updateFarmer("common_diseases", e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>Disease Prevention</label>
+            <textarea
+              className={textareaClass}
+              rows={3}
+              value={form.farmer?.disease_prevention || ""}
+              onChange={(e) =>
+                updateFarmer("disease_prevention", e.target.value)
+              }
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className={labelClass}>Notes</label>
+            <textarea
+              className={textareaClass}
+              rows={3}
+              value={form.farmer?.notes || ""}
+              onChange={(e) => updateFarmer("notes", e.target.value)}
+            />
+          </div>
         </div>
       </section>
 
       <section className="rounded-3xl bg-white p-6 shadow-sm">
         <h2 className={sectionTitleClass}>Ornamental Information</h2>
+
         <div className="mt-6 grid gap-4 md:grid-cols-2">
-          {ornamentalFields.map((field) => (
-            <div
-              key={field.key}
-              className={field.kind === "textarea" ? "md:col-span-2" : undefined}
-            >
-              <label className={labelClass}>{field.label}</label>
-              {field.kind === "textarea" ? (
-                <textarea
-                  className={textareaClass}
-                  rows={field.rows || 4}
-                  value={form.ornamental?.[field.key] || ""}
-                  onChange={(e) => updateOrnamental(field.key, e.target.value)}
-                />
-              ) : (
-                <input
-                  className={inputClass}
-                  value={form.ornamental?.[field.key] || ""}
-                  onChange={(e) => updateOrnamental(field.key, e.target.value)}
-                />
-              )}
-            </div>
-          ))}
+          <div>
+            <label className={labelClass}>Environment</label>
+            <textarea
+              className={textareaClass}
+              rows={3}
+              value={form.ornamental?.environment || ""}
+              onChange={(e) => updateOrnamental("environment", e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>Population</label>
+            <input
+              className={inputClass}
+              value={form.ornamental?.population || ""}
+              onChange={(e) => updateOrnamental("population", e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>Source Type</label>
+            <input
+              className={inputClass}
+              value={form.ornamental?.source_type || ""}
+              onChange={(e) => updateOrnamental("source_type", e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>Source Size</label>
+            <input
+              className={inputClass}
+              value={form.ornamental?.source_size || ""}
+              onChange={(e) => updateOrnamental("source_size", e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>System Type</label>
+            <input
+              className={inputClass}
+              value={form.ornamental?.system_type || ""}
+              onChange={(e) => updateOrnamental("system_type", e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>Water Temperature</label>
+            <input
+              className={inputClass}
+              value={form.ornamental?.water_temp || ""}
+              onChange={(e) => updateOrnamental("water_temp", e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>pH</label>
+            <input
+              className={inputClass}
+              value={form.ornamental?.ph || ""}
+              onChange={(e) => updateOrnamental("ph", e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>Growth Rate</label>
+            <input
+              className={inputClass}
+              value={form.ornamental?.growth_rate || ""}
+              onChange={(e) =>
+                updateOrnamental("growth_rate", e.target.value)
+              }
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>Survival Rate</label>
+            <input
+              className={inputClass}
+              value={form.ornamental?.survival_rate || ""}
+              onChange={(e) =>
+                updateOrnamental("survival_rate", e.target.value)
+              }
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className={labelClass}>Preparation</label>
+            <textarea
+              className={textareaClass}
+              rows={3}
+              value={form.ornamental?.preparation || ""}
+              onChange={(e) =>
+                updateOrnamental("preparation", e.target.value)
+              }
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>Compatible Species</label>
+            <textarea
+              className={textareaClass}
+              rows={3}
+              value={form.ornamental?.compatible_species || ""}
+              onChange={(e) =>
+                updateOrnamental("compatible_species", e.target.value)
+              }
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>Incompatible Species</label>
+            <textarea
+              className={textareaClass}
+              rows={3}
+              value={form.ornamental?.incompatible_species || ""}
+              onChange={(e) =>
+                updateOrnamental("incompatible_species", e.target.value)
+              }
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>Recommended Food</label>
+            <textarea
+              className={textareaClass}
+              rows={3}
+              value={form.ornamental?.recommended_food || ""}
+              onChange={(e) =>
+                updateOrnamental("recommended_food", e.target.value)
+              }
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>Not Recommended Food</label>
+            <textarea
+              className={textareaClass}
+              rows={3}
+              value={form.ornamental?.not_recommended_food || ""}
+              onChange={(e) =>
+                updateOrnamental("not_recommended_food", e.target.value)
+              }
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>Feeding Frequency</label>
+            <input
+              className={inputClass}
+              value={form.ornamental?.feeding_frequency || ""}
+              onChange={(e) =>
+                updateOrnamental("feeding_frequency", e.target.value)
+              }
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>Feeding Amount</label>
+            <input
+              className={inputClass}
+              value={form.ornamental?.feeding_amount || ""}
+              onChange={(e) =>
+                updateOrnamental("feeding_amount", e.target.value)
+              }
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>Common Diseases</label>
+            <textarea
+              className={textareaClass}
+              rows={3}
+              value={form.ornamental?.common_diseases || ""}
+              onChange={(e) =>
+                updateOrnamental("common_diseases", e.target.value)
+              }
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>Disease Prevention</label>
+            <textarea
+              className={textareaClass}
+              rows={3}
+              value={form.ornamental?.disease_prevention || ""}
+              onChange={(e) =>
+                updateOrnamental("disease_prevention", e.target.value)
+              }
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className={labelClass}>Notes</label>
+            <textarea
+              className={textareaClass}
+              rows={3}
+              value={form.ornamental?.notes || ""}
+              onChange={(e) => updateOrnamental("notes", e.target.value)}
+            />
+          </div>
         </div>
       </section>
 
@@ -480,8 +805,15 @@ export default function FishForm({
           disabled={loading}
           className="rounded-2xl bg-blue-600 px-5 py-3 text-white hover:bg-blue-700 disabled:opacity-50"
         >
-          {loading ? (mode === "edit" ? "Updating..." : "Saving...") : mode === "edit" ? "Update Fish" : "Save Fish"}
+          {loading
+            ? mode === "edit"
+              ? "Updating..."
+              : "Saving..."
+            : mode === "edit"
+            ? "Update Fish"
+            : "Save Fish"}
         </button>
+
         <button
           type="button"
           onClick={() => router.push("/admin/fish")}

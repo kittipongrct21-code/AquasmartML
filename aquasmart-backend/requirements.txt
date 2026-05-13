@@ -6,3 +6,6 @@ numpy
 tensorflow
 supabase
 python-dotenv
+
+supabase
+httpx
