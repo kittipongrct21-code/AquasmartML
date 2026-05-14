@@ -3,7 +3,7 @@ uvicorn[standard]
 python-multipart
 pillow
 numpy
-tensorflow
+tensorflow-cpu
 supabase
 python-dotenv
 
