@@ -3,19 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
+import { useI18n } from "@/lib/i18n-context";
+import { LanguageToggle } from "./LanguageToggle";
 
 type NavItem = {
   href: string;
   label: string;
 };
-
-const PUBLIC_NAV_ITEMS: NavItem[] = [
-  { href: "/", label: "Home" },
-  { href: "/fish", label: "Fish" },
-  { href: "/identify", label: "Identify" },
-  { href: "/history", label: "History" },
-  { href: "/profile", label: "Profile" },
-];
 
 const ADMIN_NAV_ITEMS: NavItem[] = [
   { href: "/admin/fish", label: "Fish Management" },
@@ -33,6 +27,15 @@ function isActivePath(pathname: string, href: string) {
 export default function AppNavbar() {
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { t } = useI18n();
+
+  const PUBLIC_NAV_ITEMS: NavItem[] = useMemo(() => [
+    { href: "/", label: t.nav.home },
+    { href: "/fish", label: t.nav.catalog },
+    { href: "/identify", label: t.nav.identify },
+    { href: "/history", label: t.nav.history },
+    { href: "/profile", label: t.nav.profile },
+  ], [t]);
 
   const isAdminPage = useMemo(() => pathname.startsWith("/admin"), [pathname]);
   const navItems = isAdminPage ? ADMIN_NAV_ITEMS : PUBLIC_NAV_ITEMS;
@@ -80,6 +83,7 @@ export default function AppNavbar() {
         </div>
 
         <div className="hidden items-center gap-2 md:flex">
+          <LanguageToggle />
           {isAdminPage ? (
             <Link
               href="/"
@@ -92,7 +96,7 @@ export default function AppNavbar() {
               href="/identify"
               className="rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
             >
-              Identify
+              {t.nav.identify}
             </Link>
           )}
         </div>
@@ -143,9 +147,12 @@ export default function AppNavbar() {
                 onClick={() => setIsMenuOpen(false)}
                 className="rounded-2xl bg-blue-600 px-4 py-3 text-center text-sm font-semibold text-white"
               >
-                Identify Fish
+                {t.nav.identify}
               </Link>
             )}
+            <div className="flex justify-center mt-2">
+              <LanguageToggle />
+            </div>
           </div>
         </div>
       ) : null}

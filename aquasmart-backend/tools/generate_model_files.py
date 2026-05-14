@@ -1,12 +1,12 @@
 import json
 from pathlib import Path
 
-from ultralytics import YOLO
+from tensorflow import keras
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 MODEL_DIR = BASE_DIR / "models"
 
-MODEL_PATH = MODEL_DIR / "aquasmart_best.pt"
+MODEL_PATH = MODEL_DIR / "fish_model_inference.keras"
 CLASS_NAMES_PATH = MODEL_DIR / "class_names.json"
 MODEL_CONFIG_PATH = MODEL_DIR / "model_config.json"
 THRESHOLDS_PATH = MODEL_DIR / "thresholds.json"
@@ -17,18 +17,21 @@ def main():
         raise FileNotFoundError(f"Model not found: {MODEL_PATH}")
 
     print(f"[INFO] Loading model: {MODEL_PATH}")
-    model = YOLO(str(MODEL_PATH))
+    model = keras.models.load_model(str(MODEL_PATH))
 
-    names = model.names
-    if isinstance(names, dict):
-        class_names = [names[i] for i in sorted(names.keys())]
-    elif isinstance(names, list):
-        class_names = names
-    else:
-        raise TypeError(f"Unsupported model.names type: {type(names)}")
-
-    if not class_names:
-        raise ValueError("No class names found in model")
+    class_names = [
+        "Bangus",
+        "Black Spotted Barb",
+        "Catfish",
+        "Fourfinger Threadfin",
+        "Gold Fish",
+        "Gourami",
+        "Green Spotted Puffer",
+        "Jaguar Gapote",
+        "Knifefish",
+        "Snakehead",
+        "not_a_fish"
+    ]
 
     with open(CLASS_NAMES_PATH, "w", encoding="utf-8") as f:
         json.dump(class_names, f, ensure_ascii=False, indent=2)
@@ -36,9 +39,9 @@ def main():
     model_config = {
         "project": "AquaSmart ML",
         "task": "classification",
-        "framework": "ultralytics",
-        "architecture": "yolov8-cls",
-        "model_file": "aquasmart_best.pt",
+        "framework": "tensorflow",
+        "architecture": "keras",
+        "model_file": "fish_model_inference.keras",
         "class_names_file": "class_names.json",
         "image_size": 320,
         "rgb": True,

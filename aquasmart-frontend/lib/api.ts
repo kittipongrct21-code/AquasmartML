@@ -19,6 +19,13 @@ export type FishListItem = {
   cover_image_url?: string | null;
   is_active?: boolean;
   origin?: string | null;
+  name_th?: string | null;
+  short_description_th?: string | null;
+  type_th?: string | null;
+  category_th?: string | null;
+  habitat_th?: string | null;
+  identify_text_th?: string | null;
+  origin_th?: string | null;
 };
 
 export type FishImageItem = {
@@ -50,6 +57,13 @@ export type FishGeneralPayload = {
   cover_image_url?: string | null;
   is_active?: boolean;
   origin?: string | null;
+  name_th?: string | null;
+  short_description_th?: string | null;
+  type_th?: string | null;
+  category_th?: string | null;
+  habitat_th?: string | null;
+  identify_text_th?: string | null;
+  origin_th?: string | null;
 };
 
 export type FishFarmerPayload = {
@@ -74,6 +88,27 @@ export type FishFarmerPayload = {
   incompatible_species?: string | null;
   survival_rate?: string | null;
   notes?: string | null;
+  how_to_raise_th?: string | null;
+  pond_type_th?: string | null;
+  pond_size_th?: string | null;
+  population_per_pond_th?: string | null;
+  water_temp_th?: string | null;
+  ph_th?: string | null;
+  water_prep_th?: string | null;
+  recommended_food_th?: string | null;
+  not_recommended_food_th?: string | null;
+  feeding_frequency_th?: string | null;
+  feeding_amount_th?: string | null;
+  compatible_species_th?: string | null;
+  growth_rate_th?: string | null;
+  common_diseases_th?: string | null;
+  disease_prevention_th?: string | null;
+  source_type_th?: string | null;
+  source_size_th?: string | null;
+  system_type_th?: string | null;
+  incompatible_species_th?: string | null;
+  survival_rate_th?: string | null;
+  notes_th?: string | null;
 };
 
 export type FishOrnamentalPayload = {
@@ -96,6 +131,25 @@ export type FishOrnamentalPayload = {
   survival_rate?: string | null;
   not_recommended_food?: string | null;
   notes?: string | null;
+  environment_th?: string | null;
+  population_th?: string | null;
+  water_temp_th?: string | null;
+  ph_th?: string | null;
+  preparation_th?: string | null;
+  recommended_food_th?: string | null;
+  feeding_frequency_th?: string | null;
+  feeding_amount_th?: string | null;
+  source_type_th?: string | null;
+  source_size_th?: string | null;
+  compatible_species_th?: string | null;
+  growth_rate_th?: string | null;
+  common_diseases_th?: string | null;
+  disease_prevention_th?: string | null;
+  system_type_th?: string | null;
+  incompatible_species_th?: string | null;
+  survival_rate_th?: string | null;
+  not_recommended_food_th?: string | null;
+  notes_th?: string | null;
 };
 
 export type FishImagePayload = {

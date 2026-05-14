@@ -17,6 +17,22 @@ from supabase import create_client
 from app.services.prediction_service import prediction_service
 
 # =========================================================
+# Patch httpx to disable SSL verification for local development
+# This resolves "Hostname mismatch" SSL errors with Supabase
+# =========================================================
+original_client = httpx.Client
+def patched_client(*args, **kwargs):
+    kwargs['verify'] = False
+    return original_client(*args, **kwargs)
+httpx.Client = patched_client
+
+original_async_client = httpx.AsyncClient
+def patched_async_client(*args, **kwargs):
+    kwargs['verify'] = False
+    return original_async_client(*args, **kwargs)
+httpx.AsyncClient = patched_async_client
+
+# =========================================================
 # Environment
 # =========================================================
 # IMPORTANT:
@@ -342,6 +358,13 @@ class FishGeneralSchema(BaseModel):
     cover_image_url: Optional[str] = None
     is_active: bool = True
     origin: Optional[str] = None
+    name_th: Optional[str] = None
+    short_description_th: Optional[str] = None
+    type_th: Optional[str] = None
+    category_th: Optional[str] = None
+    habitat_th: Optional[str] = None
+    identify_text_th: Optional[str] = None
+    origin_th: Optional[str] = None
 
 
 class FishFarmerSchema(BaseModel):
@@ -366,6 +389,27 @@ class FishFarmerSchema(BaseModel):
     incompatible_species: Optional[str] = None
     survival_rate: Optional[str] = None
     notes: Optional[str] = None
+    how_to_raise_th: Optional[str] = None
+    pond_type_th: Optional[str] = None
+    pond_size_th: Optional[str] = None
+    population_per_pond_th: Optional[str] = None
+    water_temp_th: Optional[str] = None
+    ph_th: Optional[str] = None
+    water_prep_th: Optional[str] = None
+    recommended_food_th: Optional[str] = None
+    not_recommended_food_th: Optional[str] = None
+    feeding_frequency_th: Optional[str] = None
+    feeding_amount_th: Optional[str] = None
+    compatible_species_th: Optional[str] = None
+    growth_rate_th: Optional[str] = None
+    common_diseases_th: Optional[str] = None
+    disease_prevention_th: Optional[str] = None
+    source_type_th: Optional[str] = None
+    source_size_th: Optional[str] = None
+    system_type_th: Optional[str] = None
+    incompatible_species_th: Optional[str] = None
+    survival_rate_th: Optional[str] = None
+    notes_th: Optional[str] = None
 
 
 class FishOrnamentalSchema(BaseModel):
@@ -388,6 +432,25 @@ class FishOrnamentalSchema(BaseModel):
     survival_rate: Optional[str] = None
     not_recommended_food: Optional[str] = None
     notes: Optional[str] = None
+    environment_th: Optional[str] = None
+    population_th: Optional[str] = None
+    water_temp_th: Optional[str] = None
+    ph_th: Optional[str] = None
+    preparation_th: Optional[str] = None
+    recommended_food_th: Optional[str] = None
+    feeding_frequency_th: Optional[str] = None
+    feeding_amount_th: Optional[str] = None
+    source_type_th: Optional[str] = None
+    source_size_th: Optional[str] = None
+    compatible_species_th: Optional[str] = None
+    growth_rate_th: Optional[str] = None
+    common_diseases_th: Optional[str] = None
+    disease_prevention_th: Optional[str] = None
+    system_type_th: Optional[str] = None
+    incompatible_species_th: Optional[str] = None
+    survival_rate_th: Optional[str] = None
+    not_recommended_food_th: Optional[str] = None
+    notes_th: Optional[str] = None
 
 
 class FishPayload(BaseModel):

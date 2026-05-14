@@ -1,86 +1,41 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase-client";
+import Image from "next/image";
+import { getPredictionHistory, deleteHistory, type HistoryItem } from "@/lib/api";
 import { useToast } from "@/components/providers/ToastProvider";
-import AccessGuard from "@/components/guards/AccessGuard";
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
-
-type SessionUser = {
-  id: string;
-  email?: string | null;
-};
-
-type HistoryItem = {
-  id: number;
-  user_id?: string | null;
-  uploaded_image_url?: string | null;
-  predicted_class: string;
-  confidence_percent?: number | null;
-  result_json?: Record<string, unknown> | null;
-  created_at?: string | null;
-  fish_id?: number | null;
-  fish_name?: string | null;
-  raw_predicted_class?: string | null;
-  prediction_type?: string | null;
-  image_url?: string | null;
-};
+import { useI18n } from "@/lib/i18n-context";
+import { supabase } from "@/lib/supabase-client";
 
 export default function HistoryPage() {
-  return (
-    <AccessGuard mode="signed_in">
-      <HistoryPageContent />
-    </AccessGuard>
-  );
-}
-
-function HistoryPageContent() {
-  const router = useRouter();
   const { showError, showSuccess } = useToast();
+  const { t: dict } = useI18n();
 
-  const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
+  const [sessionUser, setSessionUser] = useState<{ id: string } | null>(null);
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
-
+  
   const [isCheckingSession, setIsCheckingSession] = useState(true);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
-
-  const [pageError, setPageError] = useState("");
 
   useEffect(() => {
     let isMounted = true;
 
-    async function bootstrap() {
+    async function checkSession() {
       try {
         setIsCheckingSession(true);
-        setPageError("");
-
-        const sessionData = await supabase.auth.getSession();
-        const user = sessionData.data.session?.user ?? null;
-
+        const { data: { session } } = await supabase.auth.getSession();
+        
         if (!isMounted) return;
 
-        if (!user) {
+        if (session?.user) {
+          setSessionUser({ id: session.user.id });
+        } else {
           setSessionUser(null);
-          setHistoryItems([]);
-          return;
         }
-
-        setSessionUser({
-          id: user.id,
-          email: user.email ?? null,
-        });
       } catch (error) {
         console.error("Failed to check session:", error);
-        if (!isMounted) return;
-
-        setPageError(
-          error instanceof Error ? error.message : "Failed to load session."
-        );
       } finally {
         if (isMounted) {
           setIsCheckingSession(false);
@@ -88,23 +43,14 @@ function HistoryPageContent() {
       }
     }
 
-    bootstrap();
+    checkSession();
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      const user = session?.user ?? null;
-
-      if (!user) {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setSessionUser({ id: session.user.id });
+      } else {
         setSessionUser(null);
-        setHistoryItems([]);
-        return;
       }
-
-      setSessionUser({
-        id: user.id,
-        email: user.email ?? null,
-      });
     });
 
     return () => {
@@ -120,45 +66,20 @@ function HistoryPageContent() {
       if (!sessionUser?.id) return;
 
       try {
-        setIsLoadingHistory(true);
-        setPageError("");
-
-        const response = await fetch(
-          `${API_BASE_URL}/prediction/history/${sessionUser.id}`,
-          {
-            method: "GET",
-            cache: "no-store",
-          }
-        );
-
-        const text = await response.text();
-        let json: { data?: HistoryItem[]; detail?: string } = {};
-
-        try {
-          json = text ? JSON.parse(text) : {};
-        } catch {
-          throw new Error(text || "Failed to load history.");
+        setIsLoading(true);
+        const items = await getPredictionHistory(sessionUser.id);
+        
+        if (isMounted) {
+          setHistoryItems(items);
         }
-
-        if (!response.ok) {
-          throw new Error(json.detail || "Failed to load history.");
-        }
-
-        if (!isMounted) return;
-        setHistoryItems(json.data || []);
       } catch (error) {
         console.error("Failed to load history:", error);
-        if (!isMounted) return;
-
-        const message =
-          error instanceof Error ? error.message : "Failed to load history.";
-
-        setHistoryItems([]);
-        setPageError(message);
-        showError(message);
+        if (isMounted) {
+          showError("Failed to load history.");
+        }
       } finally {
         if (isMounted) {
-          setIsLoadingHistory(false);
+          setIsLoading(false);
         }
       }
     }
@@ -170,101 +91,71 @@ function HistoryPageContent() {
     };
   }, [sessionUser?.id, showError]);
 
-  const totalItems = historyItems.length;
-
-  const knownCount = useMemo(() => {
-    return historyItems.filter(
-      (item) =>
-        item.predicted_class !== "unknown_fish" &&
-        item.predicted_class !== "not_a_fish"
-    ).length;
-  }, [historyItems]);
-
-  const unknownCount = useMemo(() => {
-    return historyItems.filter(
-      (item) =>
-        item.predicted_class === "unknown_fish" ||
-        item.predicted_class === "not_a_fish"
-    ).length;
-  }, [historyItems]);
-
-  async function handleDeleteHistory(historyId: number) {
-    const confirmed = window.confirm("Delete this history record?");
-    if (!confirmed) return;
+  async function handleDelete(id: number) {
+    if (!confirm("Are you sure you want to delete this history record?")) {
+      return;
+    }
 
     try {
-      setDeletingId(historyId);
-
-      const response = await fetch(`${API_BASE_URL}/history/${historyId}`, {
-        method: "DELETE",
-      });
-
-      const text = await response.text();
-      let json: { message?: string; detail?: string } = {};
-
-      try {
-        json = text ? JSON.parse(text) : {};
-      } catch {
-        throw new Error(text || "Failed to delete history.");
-      }
-
-      if (!response.ok) {
-        throw new Error(json.detail || "Failed to delete history.");
-      }
-
-      setHistoryItems((prev) => prev.filter((item) => item.id !== historyId));
-      showSuccess(json.message || "History deleted successfully.");
+      setDeletingId(id);
+      await deleteHistory(id);
+      setHistoryItems((prev) => prev.filter((item) => item.id !== id));
+      showSuccess("History deleted successfully");
     } catch (error) {
-      console.error("Delete history error:", error);
-      showError(
-        error instanceof Error ? error.message : "Failed to delete history."
-      );
+      console.error("Failed to delete history:", error);
+      showError(error instanceof Error ? error.message : "Failed to delete history");
     } finally {
       setDeletingId(null);
     }
   }
 
-  function handleOpenFishDetail(fishId?: number | null) {
-    if (!fishId) return;
-    router.push(`/fish/${fishId}`);
-  }
-
-  function formatDate(value?: string | null) {
-    if (!value) return "Unknown time";
-
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return value;
-
-    return date.toLocaleString();
-  }
-
-  function getDisplayImage(item: HistoryItem) {
-    return item.image_url || item.uploaded_image_url || "";
-  }
-
-  function getDisplayTitle(item: HistoryItem) {
-    if (item.fish_name) return item.fish_name;
-    if (item.raw_predicted_class) return humanizePrediction(item.raw_predicted_class);
-    return humanizePrediction(item.predicted_class);
-  }
-
-  function getDisplaySubtitle(item: HistoryItem) {
-    if (item.predicted_class === "unknown_fish") {
-      return "The model could not confidently match this image to a known fish record.";
+  function formatDate(dateString?: string | null) {
+    if (!dateString) return dict.history.unknownDate;
+    try {
+      return new Date(dateString).toLocaleString();
+    } catch {
+      return dict.history.unknownDate;
     }
-
-    if (item.predicted_class === "not_a_fish") {
-      return "The uploaded image was not recognized as a fish.";
-    }
-
-    return "Prediction completed and saved in your history.";
   }
 
-  if (isCheckingSession || !sessionUser) {
+  if (isCheckingSession) {
     return (
       <main className="min-h-screen px-4 py-8">
-        <section className="mx-auto max-w-6xl rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-          <p className="text-sm text-slate-500">Checking session...</p>
+        <section className="mx-auto max-w-5xl rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+          <p className="text-sm text-slate-500">{dict.common.loading}</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (!sessionUser) {
+    return (
+      <main className="min-h-screen px-4 py-8">
+        <section className="mx-auto max-w-5xl space-y-6">
+          <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+            <p className="text-sm font-semibold text-blue-600">{dict.nav.history}</p>
+            <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900">
+              {dict.history.title}
+            </h1>
+            <p className="mt-2 text-sm text-slate-600">
+              {dict.history.desc}
+            </p>
+          </section>
+
+          <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+            <div className="rounded-2xl bg-amber-50 px-4 py-4 text-sm text-amber-700">
+              {dict.history.notSignedInWarning}
+            </div>
+
+            <div className="mt-5 flex gap-3">
+              <Link
+                href="/auth/login"
+                className="rounded-2xl bg-blue-600 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-blue-700"
+              >
+                {dict.history.signInToView}
+              </Link>
+            </div>
+          </section>
         </section>
       </main>
     );
@@ -272,236 +163,147 @@ function HistoryPageContent() {
 
   return (
     <main className="min-h-screen px-4 py-8">
-      <section className="mx-auto max-w-6xl space-y-6">
+      <section className="mx-auto max-w-5xl space-y-6">
         <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <p className="text-sm font-semibold text-blue-600">History</p>
+              <p className="text-sm font-semibold text-blue-600">{dict.nav.history}</p>
               <h1 className="mt-2 text-4xl font-extrabold tracking-tight text-slate-900">
-                Prediction History
+                {dict.history.title}
               </h1>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
-                Review your saved AI fish predictions, open matched fish pages,
-                or remove old records from your history.
+                {dict.history.desc}
               </p>
             </div>
-
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row">
               <Link
-                href="/identify"
-                className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+                href="/profile"
+                className="rounded-2xl bg-slate-100 px-4 py-3 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
               >
-                Identify Fish
+                {dict.history.backToProfile}
               </Link>
               <Link
-                href="/fish"
-                className="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
+                href="/identify"
+                className="rounded-2xl bg-blue-600 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-blue-700"
               >
-                Browse Catalog
+                {dict.history.identifyMore}
               </Link>
             </div>
           </div>
-
-          <div className="mt-6 grid gap-4 sm:grid-cols-3">
-            <HistoryStatCard label="Total Records" value={String(totalItems)} />
-            <HistoryStatCard label="Known Matches" value={String(knownCount)} />
-            <HistoryStatCard label="Unknown Results" value={String(unknownCount)} />
+          
+          <div className="mt-6 flex items-center gap-2 text-sm font-medium text-slate-600">
+            <span className="flex h-6 items-center rounded-full bg-blue-50 px-2.5 text-blue-700">
+              {historyItems.length}
+            </span>
+            {dict.history.records}
           </div>
         </section>
 
-        {isLoadingHistory ? (
+        {isLoading ? (
           <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-            <div className="rounded-2xl bg-slate-50 px-4 py-4 text-sm text-slate-600">
-              Loading prediction history...
-            </div>
+            <p className="text-sm text-slate-500">{dict.history.loading}</p>
           </section>
-        ) : null}
-
-        {!isLoadingHistory && pageError ? (
-          <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-            <div className="rounded-2xl bg-rose-50 px-4 py-4 text-sm text-rose-700">
-              {pageError}
+        ) : historyItems.length === 0 ? (
+          <section className="rounded-3xl bg-white p-12 text-center shadow-sm ring-1 ring-slate-200">
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-slate-100">
+              <svg className="h-10 w-10 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
             </div>
-          </section>
-        ) : null}
-
-        {!isLoadingHistory && !pageError && historyItems.length === 0 ? (
-          <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-            <div className="rounded-2xl bg-slate-50 px-4 py-4 text-sm text-slate-600">
-              No prediction history found yet.
-            </div>
-
-            <div className="mt-4">
+            <h3 className="mt-4 text-lg font-bold text-slate-900">{dict.history.noHistoryTitle}</h3>
+            <p className="mt-2 text-sm text-slate-500">{dict.history.noHistoryDesc}</p>
+            <div className="mt-6">
               <Link
                 href="/identify"
-                className="inline-flex rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+                className="inline-flex rounded-2xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
               >
-                Start your first prediction
+                {dict.history.goIdentify}
               </Link>
             </div>
           </section>
-        ) : null}
-
-        {!isLoadingHistory && !pageError && historyItems.length > 0 ? (
-          <section className="grid gap-5 lg:grid-cols-2">
-            {historyItems.map((item) => {
-              const displayImage = getDisplayImage(item);
-              const title = getDisplayTitle(item);
-              const subtitle = getDisplaySubtitle(item);
-              const confidence = Math.max(
-                0,
-                Math.min(100, item.confidence_percent || 0)
-              );
-
-              return (
-                <article
-                  key={item.id}
-                  className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200"
-                >
-                  <div className="grid gap-0 sm:grid-cols-[180px_minmax(0,1fr)]">
-                    <div className="flex min-h-[180px] items-center justify-center overflow-hidden bg-slate-50">
-                      {displayImage ? (
-                        <img
-                          src={displayImage}
-                          alt={title}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center bg-slate-100">
-                          <span className="text-base font-bold text-slate-400">
-                            AS
-                          </span>
-                        </div>
-                      )}
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {historyItems.map((item) => (
+              <div key={item.id} className="group relative flex flex-col overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200 transition-all hover:shadow-md hover:ring-slate-300">
+                <div className="relative aspect-[4/3] w-full bg-slate-100">
+                  {item.uploaded_image_url || item.image_url ? (
+                    <img
+                      src={item.uploaded_image_url || item.image_url || ""}
+                      alt={item.predicted_class}
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-slate-400">
+                      <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
                     </div>
-
-                    <div className="p-5">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
-                            Saved Prediction
-                          </p>
-                          <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-900">
-                            {title}
-                          </h2>
-                        </div>
-
-                        <span className="rounded-full bg-blue-50 px-3 py-1 text-[11px] font-semibold text-blue-700">
-                          {item.prediction_type || "Prediction"}
-                        </span>
-                      </div>
-
-                      <p className="mt-3 text-sm leading-7 text-slate-600">
-                        {subtitle}
-                      </p>
-
-                      <div className="mt-4">
-                        <div className="mb-2 flex items-center justify-between text-sm">
-                          <span className="font-semibold text-slate-700">
-                            Confidence
-                          </span>
-                          <span className="font-bold text-blue-700">
-                            {confidence.toFixed(0)}%
-                          </span>
-                        </div>
-
-                        <div className="h-3 overflow-hidden rounded-full bg-slate-200">
-                          <div
-                            className="h-full rounded-full bg-blue-600"
-                            style={{ width: `${confidence}%` }}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                        <MiniInfo label="Predicted Class" value={item.predicted_class} />
-                        <MiniInfo
-                          label="Raw Class"
-                          value={item.raw_predicted_class || "-"}
-                        />
-                        <MiniInfo
-                          label="Matched Fish"
-                          value={item.fish_name || "No direct match"}
-                        />
-                        <MiniInfo
-                          label="Saved At"
-                          value={formatDate(item.created_at)}
-                        />
-                      </div>
-
-                      <div className="mt-5 flex flex-wrap gap-3">
-                        {item.fish_id ? (
-                          <button
-                            type="button"
-                            onClick={() => handleOpenFishDetail(item.fish_id)}
-                            className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
-                          >
-                            Open fish details
-                          </button>
-                        ) : (
-                          <Link
-                            href="/fish"
-                            className="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
-                          >
-                            Browse catalog
-                          </Link>
-                        )}
-
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteHistory(item.id)}
-                          disabled={deletingId === item.id}
-                          className="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          {deletingId === item.id ? "Deleting..." : "Delete"}
-                        </button>
-                      </div>
+                  )}
+                  
+                  {item.confidence_percent !== null && item.confidence_percent !== undefined && (
+                    <div className="absolute left-3 top-3 rounded-full bg-black/60 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm">
+                      {Math.round(item.confidence_percent)}% {dict.history.confidence}
                     </div>
+                  )}
+                </div>
+                
+                <div className="flex flex-1 flex-col p-5">
+                  <div className="mb-2 text-xs font-medium text-slate-500">
+                    {formatDate(item.created_at)}
                   </div>
-                </article>
-              );
-            })}
-          </section>
-        ) : null}
+                  
+                  <h3 className="mb-1 text-lg font-bold text-slate-900 line-clamp-1">
+                    {item.predicted_class}
+                  </h3>
+                  
+                  {item.fish_name && (
+                    <div className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-blue-600">
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      {dict.history.match}: {item.fish_name}
+                    </div>
+                  )}
+                  
+                  <div className="mt-auto flex items-center justify-between pt-4">
+                    {item.fish_id ? (
+                      <Link
+                        href={`/fish/${item.fish_id}`}
+                        className="text-sm font-semibold text-blue-600 hover:text-blue-700"
+                      >
+                        {dict.catalog.openDetails} &rarr;
+                      </Link>
+                    ) : (
+                      <span className="text-sm text-slate-400">
+                        {dict.history.unknownType}
+                      </span>
+                    )}
+                    
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(item.id)}
+                      disabled={deletingId === item.id}
+                      className="rounded-full bg-rose-50 p-2 text-rose-600 transition hover:bg-rose-100 disabled:opacity-50"
+                      title={dict.history.delete}
+                    >
+                      {deletingId === item.id ? (
+                        <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      ) : (
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
     </main>
   );
-}
-
-function HistoryStatCard({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-2xl bg-slate-50 px-4 py-4">
-      <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-        {label}
-      </p>
-      <p className="mt-2 text-2xl font-extrabold tracking-tight text-slate-900">
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function MiniInfo({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl bg-slate-50 px-4 py-4">
-      <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-        {label}
-      </p>
-      <p className="mt-2 break-words text-sm font-semibold leading-7 text-slate-900">
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function humanizePrediction(value?: string | null) {
-  return (value || "")
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (char) => char.toUpperCase());
 }

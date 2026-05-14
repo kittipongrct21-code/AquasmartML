@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { getPublicFishById } from "@/lib/api";
+import { useI18n, getLocalizedValue } from "@/lib/i18n-context";
 
 type FishImageItem = {
   id: number;
@@ -60,6 +61,7 @@ const HIDDEN_INFO_KEYS = new Set([
 export default function FishDetailPage() {
   const params = useParams<{ id: string }>();
   const fishId = Array.isArray(params?.id) ? params.id[0] : params?.id;
+  const { locale, t } = useI18n();
 
   const [data, setData] = useState<FishDetailResponse | null>(null);
   const [tab, setTab] = useState<DetailTab>("general");
@@ -138,25 +140,25 @@ export default function FishDetailPage() {
     if (!fish) return [];
 
     return [
-      { label: "Type", value: fish.type || "Not available" },
-      { label: "Category", value: fish.category || "Not available" },
-      { label: "Origin", value: fish.origin || "Not available" },
-      { label: "Habitat", value: fish.habitat || "Not available" },
+      { label: "Type", value: getLocalizedValue(fish, "type", locale) || "Not available" },
+      { label: "Category", value: getLocalizedValue(fish, "category", locale) || "Not available" },
+      { label: "Origin", value: getLocalizedValue(fish, "origin", locale) || "Not available" },
+      { label: "Habitat", value: getLocalizedValue(fish, "habitat", locale) || "Not available" },
       {
         label: "Average lifespan",
-        value: fish.average_lifespan || "Not available",
+        value: getLocalizedValue(fish, "average_lifespan", locale) || "Not available",
       },
-      { label: "Adult size", value: fish.adult_size || "Not available" },
+      { label: "Adult size", value: getLocalizedValue(fish, "adult_size", locale) || "Not available" },
     ];
-  }, [fish]);
+  }, [fish, locale]);
 
   const farmerEntries = useMemo(() => {
-    return buildInfoEntries(data?.farmer_info || null);
-  }, [data?.farmer_info]);
+    return buildInfoEntries(data?.farmer_info || null, locale);
+  }, [data?.farmer_info, locale]);
 
   const ornamentalEntries = useMemo(() => {
-    return buildInfoEntries(data?.ornamental_info || null);
-  }, [data?.ornamental_info]);
+    return buildInfoEntries(data?.ornamental_info || null, locale);
+  }, [data?.ornamental_info, locale]);
 
   if (isLoading) {
     return (
@@ -250,7 +252,7 @@ export default function FishDetailPage() {
                 {displayImage ? (
                   <img
                     src={displayImage}
-                    alt={fish.name}
+                    alt={getLocalizedValue(fish, "name", locale) || fish.name}
                     className="h-full max-h-[420px] w-full object-contain"
                   />
                 ) : (
@@ -283,7 +285,7 @@ export default function FishDetailPage() {
                       >
                         <img
                           src={image.image_url}
-                          alt={image.alt_text || fish.name}
+                          alt={image.alt_text || getLocalizedValue(fish, "name", locale) || fish.name}
                           className="h-20 w-20 object-cover"
                         />
                       </button>
@@ -300,39 +302,39 @@ export default function FishDetailPage() {
                     Fish Detail
                   </p>
                   <h1 className="mt-2 text-4xl font-extrabold tracking-tight text-slate-900">
-                    {fish.name}
+                    {getLocalizedValue(fish, "name", locale) || fish.name}
                   </h1>
                 </div>
 
                 <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-                  {fish.type || "Fish"}
+                  {getLocalizedValue(fish, "type", locale) || "Fish"}
                 </span>
               </div>
 
               <p className="mt-4 text-sm leading-7 text-slate-600">
-                {fish.short_description || "No description available."}
+                {getLocalizedValue(fish, "short_description", locale) || "No description available."}
               </p>
 
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                <InfoBox label="Type" value={fish.type || "Not available"} />
+                <InfoBox label="Type" value={getLocalizedValue(fish, "type", locale) || "Not available"} />
                 <InfoBox
                   label="Category"
-                  value={fish.category || "Not available"}
+                  value={getLocalizedValue(fish, "category", locale) || "Not available"}
                 />
                 <InfoBox
                   label="Habitat"
-                  value={fish.habitat || "Not available"}
+                  value={getLocalizedValue(fish, "habitat", locale) || "Not available"}
                 />
-                <InfoBox label="Origin" value={fish.origin || "Not available"} />
+                <InfoBox label="Origin" value={getLocalizedValue(fish, "origin", locale) || "Not available"} />
               </div>
 
-              {fish.identify_text ? (
+              {getLocalizedValue(fish, "identify_text", locale) ? (
                 <div className="mt-6 rounded-2xl bg-slate-50 px-4 py-4">
                   <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
                     Identify Text
                   </p>
                   <p className="mt-2 text-sm leading-7 text-slate-700">
-                    {fish.identify_text}
+                    {getLocalizedValue(fish, "identify_text", locale)}
                   </p>
                 </div>
               ) : null}
@@ -382,7 +384,7 @@ export default function FishDetailPage() {
                 Identification Notes
               </p>
               <p className="mt-2 text-sm leading-7 text-slate-700">
-                {fish.identify_text || "Not available"}
+                {getLocalizedValue(fish, "identify_text", locale) || "Not available"}
               </p>
             </div>
           </div>
@@ -428,7 +430,7 @@ export default function FishDetailPage() {
                     <div className="flex h-56 items-center justify-center overflow-hidden bg-slate-50">
                       <img
                         src={image.image_url}
-                        alt={image.alt_text || fish.name}
+                        alt={image.alt_text || getLocalizedValue(fish, "name", locale) || fish.name}
                         className="h-full w-full object-cover"
                       />
                     </div>
@@ -523,20 +525,22 @@ function DetailSection({
 }
 
 function buildInfoEntries(
-  source: Record<string, unknown> | null
+  source: Record<string, unknown> | null,
+  locale: "en" | "th"
 ): Array<{ label: string; value: string }> {
   if (!source) return [];
 
   return Object.entries(source)
     .filter(([key, value]) => {
       if (HIDDEN_INFO_KEYS.has(key)) return false;
-      if (value === null || value === undefined) return false;
-      if (typeof value === "string" && value.trim() === "") return false;
+      if (key.endsWith("_th")) return false; // Hide raw _th keys from map
+      const locValue = getLocalizedValue(source, key, locale);
+      if (!locValue || locValue.trim() === "") return false;
       return true;
     })
-    .map(([key, value]) => ({
+    .map(([key, _]) => ({
       label: humanizeKey(key),
-      value: String(value),
+      value: getLocalizedValue(source, key, locale),
     }));
 }
 

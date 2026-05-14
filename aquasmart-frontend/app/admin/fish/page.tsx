@@ -9,9 +9,11 @@ import {
   type FishListItem,
 } from "@/lib/api";
 import { useToast } from "@/components/providers/ToastProvider";
+import { useI18n, getLocalizedValue } from "@/lib/i18n-context";
 
 export default function AdminFishPage() {
   const { showError, showSuccess } = useToast();
+  const { locale, t: dict } = useI18n();
 
   const [fishList, setFishList] = useState<FishListItem[]>([]);
   const [search, setSearch] = useState("");
@@ -126,11 +128,10 @@ export default function AdminFishPage() {
           <div>
             <p className="text-sm font-semibold text-blue-600">Admin</p>
             <h1 className="mt-2 text-4xl font-extrabold tracking-tight text-slate-900">
-              Fish Management
+              {dict.admin.title}
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
-              Manage fish records, search the database, publish or unpublish
-              fish, and open edit pages.
+              {dict.admin.desc}
             </p>
           </div>
 
@@ -139,25 +140,25 @@ export default function AdminFishPage() {
               href="/fish"
               className="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50"
             >
-              Open Public Catalog
+              {dict.admin.openCatalog}
             </Link>
 
             <Link
               href="/admin/fish/new"
               className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
             >
-              Add New Fish
+              {dict.admin.addNew}
             </Link>
           </div>
         </div>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Total Fish" value={String(totalCount)} />
-          <StatCard label="Active" value={String(activeCount)} />
-          <StatCard label="Inactive" value={String(inactiveCount)} />
+          <StatCard label={dict.admin.totalFish} value={String(totalCount)} />
+          <StatCard label={dict.admin.active} value={String(activeCount)} />
+          <StatCard label={dict.admin.inactive} value={String(inactiveCount)} />
           <StatCard
-            label="Current Status Filter"
-            value={status ? capitalize(status) : "All"}
+            label={dict.admin.statusFilter}
+            value={status ? capitalize(status) : dict.admin.all}
           />
         </div>
       </section>
@@ -169,14 +170,14 @@ export default function AdminFishPage() {
               htmlFor="search"
               className="mb-2 block text-sm font-semibold text-slate-700"
             >
-              Search
+              {dict.admin.searchLabel}
             </label>
             <input
               id="search"
               type="text"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search by fish name or slug"
+              placeholder={dict.admin.searchPlaceholder}
               className="block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
             />
           </div>
@@ -186,7 +187,7 @@ export default function AdminFishPage() {
               htmlFor="status"
               className="mb-2 block text-sm font-semibold text-slate-700"
             >
-              Status
+              {dict.admin.statusLabel}
             </label>
             <select
               id="status"
@@ -194,9 +195,9 @@ export default function AdminFishPage() {
               onChange={(event) => setStatus(event.target.value)}
               className="block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
             >
-              <option value="">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
+              <option value="">{dict.admin.allStatus}</option>
+              <option value="active">{dict.admin.active}</option>
+              <option value="inactive">{dict.admin.inactive}</option>
             </select>
           </div>
 
@@ -205,14 +206,14 @@ export default function AdminFishPage() {
               htmlFor="category"
               className="mb-2 block text-sm font-semibold text-slate-700"
             >
-              Category
+              {dict.admin.categoryLabel}
             </label>
             <input
               id="category"
               type="text"
               value={category}
               onChange={(event) => setCategory(event.target.value)}
-              placeholder="Farmed Fish"
+              placeholder={dict.admin.categoryPlaceholder}
               className="block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
             />
           </div>
@@ -222,14 +223,14 @@ export default function AdminFishPage() {
               htmlFor="fish-type"
               className="mb-2 block text-sm font-semibold text-slate-700"
             >
-              Type
+              {dict.admin.typeLabel}
             </label>
             <input
               id="fish-type"
               type="text"
               value={fishType}
               onChange={(event) => setFishType(event.target.value)}
-              placeholder="Freshwater"
+              placeholder={dict.admin.typePlaceholder}
               className="block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
             />
           </div>
@@ -242,7 +243,7 @@ export default function AdminFishPage() {
             disabled={isLoading || isMutating}
             className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
           >
-            {isLoading ? "Loading..." : "Apply Filters"}
+            {isLoading ? dict.common.loading : dict.admin.applyFilters}
           </button>
 
           <button
@@ -251,7 +252,7 @@ export default function AdminFishPage() {
             disabled={isLoading || isMutating}
             className="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Clear Filters
+            {dict.admin.clearFilters}
           </button>
         </div>
       </section>
@@ -267,7 +268,7 @@ export default function AdminFishPage() {
       {isLoading ? (
         <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
           <div className="rounded-2xl bg-slate-50 px-4 py-4 text-sm text-slate-600">
-            Loading fish management data...
+            {dict.admin.loadingData}
           </div>
         </section>
       ) : null}
@@ -275,7 +276,7 @@ export default function AdminFishPage() {
       {!isLoading && !pageError && fishList.length === 0 ? (
         <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
           <div className="rounded-2xl bg-slate-50 px-4 py-4 text-sm text-slate-600">
-            No fish found for the current filters.
+            {dict.admin.noFishFound}
           </div>
         </section>
       ) : null}
@@ -286,11 +287,11 @@ export default function AdminFishPage() {
             <table className="min-w-full">
               <thead className="bg-slate-50">
                 <tr className="text-left text-sm text-slate-500">
-                  <th className="px-5 py-4 font-semibold">Fish</th>
-                  <th className="px-5 py-4 font-semibold">Category</th>
-                  <th className="px-5 py-4 font-semibold">Type</th>
-                  <th className="px-5 py-4 font-semibold">Status</th>
-                  <th className="px-5 py-4 text-right font-semibold">Actions</th>
+                  <th className="px-5 py-4 font-semibold">{dict.admin.fishCol}</th>
+                  <th className="px-5 py-4 font-semibold">{dict.admin.categoryCol}</th>
+                  <th className="px-5 py-4 font-semibold">{dict.admin.typeCol}</th>
+                  <th className="px-5 py-4 font-semibold">{dict.admin.statusCol}</th>
+                  <th className="px-5 py-4 text-right font-semibold">{dict.admin.actionsCol}</th>
                 </tr>
               </thead>
 
@@ -320,7 +321,7 @@ export default function AdminFishPage() {
 
                         <div className="min-w-0">
                           <p className="truncate font-bold text-slate-900">
-                            {fish.name}
+                            {getLocalizedValue(fish, "name", locale) || fish.name}
                           </p>
                           <p className="mt-1 text-xs text-slate-500">
                             ID {fish.id} · {fish.slug}
@@ -329,8 +330,8 @@ export default function AdminFishPage() {
                       </div>
                     </td>
 
-                    <td className="px-5 py-4">{fish.category || "-"}</td>
-                    <td className="px-5 py-4">{fish.type || "-"}</td>
+                    <td className="px-5 py-4">{getLocalizedValue(fish, "category", locale) || "-"}</td>
+                    <td className="px-5 py-4">{getLocalizedValue(fish, "type", locale) || "-"}</td>
 
                     <td className="px-5 py-4">
                       <span
@@ -340,7 +341,7 @@ export default function AdminFishPage() {
                             : "rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600"
                         }
                       >
-                        {fish.is_active ? "Active" : "Inactive"}
+                        {fish.is_active ? dict.admin.active : dict.admin.inactive}
                       </span>
                     </td>
 
@@ -350,14 +351,14 @@ export default function AdminFishPage() {
                           href={`/admin/fish/${fish.id}`}
                           className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50"
                         >
-                          View
+                          {dict.admin.view}
                         </Link>
 
                         <Link
                           href={`/admin/fish/${fish.id}/edit`}
                           className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-blue-700 shadow-sm ring-1 ring-blue-100 transition hover:bg-blue-50"
                         >
-                          Edit
+                          {dict.admin.edit}
                         </Link>
 
                         <button
@@ -366,7 +367,7 @@ export default function AdminFishPage() {
                           disabled={isMutating}
                           className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-amber-700 shadow-sm ring-1 ring-amber-100 transition hover:bg-amber-50 disabled:opacity-60"
                         >
-                          {fish.is_active ? "Unpublish" : "Publish"}
+                          {fish.is_active ? dict.admin.unpublish : dict.admin.publish}
                         </button>
 
                         <button
@@ -375,7 +376,7 @@ export default function AdminFishPage() {
                           disabled={isMutating}
                           className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-red-700 shadow-sm ring-1 ring-red-100 transition hover:bg-red-50 disabled:opacity-60"
                         >
-                          Delete
+                          {dict.admin.delete}
                         </button>
                       </div>
                     </td>
@@ -409,12 +410,12 @@ export default function AdminFishPage() {
                   </div>
 
                   <div className="min-w-0">
-                    <p className="font-bold text-slate-900">{fish.name}</p>
+                    <p className="font-bold text-slate-900">{getLocalizedValue(fish, "name", locale) || fish.name}</p>
                     <p className="mt-1 text-xs text-slate-500">
-                      {fish.category || "No category"}
+                      {getLocalizedValue(fish, "category", locale) || dict.admin.noCategory}
                     </p>
                     <p className="mt-1 text-xs text-slate-500">
-                      ID {fish.id} · {fish.is_active ? "Active" : "Inactive"}
+                      ID {fish.id} · {fish.is_active ? dict.admin.active : dict.admin.inactive}
                     </p>
                   </div>
                 </div>
@@ -424,14 +425,14 @@ export default function AdminFishPage() {
                     href={`/admin/fish/${fish.id}`}
                     className="rounded-2xl bg-slate-100 px-4 py-3 text-center text-sm font-semibold text-slate-700"
                   >
-                    View
+                    {dict.admin.view}
                   </Link>
 
                   <Link
                     href={`/admin/fish/${fish.id}/edit`}
                     className="rounded-2xl bg-blue-600 px-4 py-3 text-center text-sm font-semibold text-white"
                   >
-                    Edit
+                    {dict.admin.edit}
                   </Link>
 
                   <button
@@ -440,7 +441,7 @@ export default function AdminFishPage() {
                     disabled={isMutating}
                     className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700 disabled:opacity-60"
                   >
-                    {fish.is_active ? "Unpublish" : "Publish"}
+                    {fish.is_active ? dict.admin.unpublish : dict.admin.publish}
                   </button>
 
                   <button
@@ -449,7 +450,7 @@ export default function AdminFishPage() {
                     disabled={isMutating}
                     className="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 disabled:opacity-60"
                   >
-                    Delete
+                    {dict.admin.delete}
                   </button>
                 </div>
               </article>

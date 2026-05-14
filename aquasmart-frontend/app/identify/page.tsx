@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getPublicFishList, type FishListItem } from "@/lib/api";
 import { supabase } from "@/lib/supabase-client";
+import { useI18n, getLocalizedValue } from "@/lib/i18n-context";
 
 type PredictionResponse = {
   status?: string;
@@ -27,6 +28,7 @@ const API_BASE_URL =
 
 export default function IdentifyPage() {
   const router = useRouter();
+  const { locale, t } = useI18n();
 
   const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
   const [fishList, setFishList] = useState<FishListItem[]>([]);
@@ -116,15 +118,21 @@ export default function IdentifyPage() {
     if (!prediction) return "";
 
     if (prediction.predicted_class === "unknown_fish") {
-      return "Unknown fish";
+      return t.identify.unknownFish;
     }
 
     if (prediction.predicted_class === "not_a_fish") {
-      return "Not a fish";
+      return t.identify.notAFish;
+    }
+
+    // Try to find the matched fish to get the localized name
+    const fish = findFishMatch(fishList, prediction.raw_predicted_class || prediction.predicted_class);
+    if (fish) {
+      return getLocalizedValue(fish, "name", locale) || fish.name;
     }
 
     return prediction.raw_predicted_class || prediction.predicted_class;
-  }, [prediction]);
+  }, [prediction, t, fishList, locale]);
 
   const resultVariant = useMemo(() => {
     if (!prediction) return "empty";
@@ -290,13 +298,12 @@ export default function IdentifyPage() {
         <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-sm font-semibold text-blue-600">AI Identify</p>
+              <p className="text-sm font-semibold text-blue-600">AI {t.nav.identify}</p>
               <h1 className="mt-2 text-4xl font-extrabold tracking-tight text-slate-900">
-                Identify Fish from Image
+                {t.identify.title}
               </h1>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
-                Upload a fish image to run the model and compare the result with
-                the fish catalog.
+                {t.identify.subtitle}
               </p>
             </div>
 
@@ -305,13 +312,13 @@ export default function IdentifyPage() {
                 href="/fish"
                 className="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
               >
-                Browse Catalog
+                {t.identify.browseCatalog}
               </Link>
               <Link
                 href="/history"
                 className="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50"
               >
-                View History
+                {t.identify.viewHistory}
               </Link>
             </div>
           </div>
@@ -335,10 +342,10 @@ export default function IdentifyPage() {
                       AS
                     </div>
                     <p className="mt-4 text-sm font-semibold text-slate-700">
-                      Select fish image
+                      {t.identify.selectImage}
                     </p>
                     <p className="mt-1 text-xs text-slate-500">
-                      JPG, PNG, or WEBP supported
+                      {t.identify.supportedFormats}
                     </p>
                   </div>
                 )}
@@ -349,7 +356,7 @@ export default function IdentifyPage() {
                   htmlFor="identify-file"
                   className="inline-flex cursor-pointer rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
                 >
-                  Choose Image
+                  {t.identify.chooseImage}
                 </label>
 
                 <button
@@ -357,7 +364,7 @@ export default function IdentifyPage() {
                   onClick={handleClearImage}
                   className="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50"
                 >
-                  Clear
+                  {t.common.clear}
                 </button>
 
                 <input
@@ -371,7 +378,7 @@ export default function IdentifyPage() {
 
               {selectedFile ? (
                 <p className="mt-3 text-sm text-slate-500">
-                  Selected file:{" "}
+                  {t.identify.selectedFile}{" "}
                   <span className="font-semibold text-slate-700">
                     {selectedFile.name}
                   </span>
@@ -382,30 +389,29 @@ export default function IdentifyPage() {
             <div className="flex flex-col justify-between rounded-3xl bg-slate-50 p-5">
               <div>
                 <h2 className="text-xl font-bold text-slate-900">
-                  Run prediction
+                  {t.identify.runPredictionTitle}
                 </h2>
                 <p className="mt-2 text-sm leading-7 text-slate-600">
-                  The system will analyze your image and try to match the result
-                  with the fish database.
+                  {t.identify.runPredictionDesc}
                 </p>
 
                 <div className="mt-5 space-y-3">
                   <StatusRow
-                    label="Catalog"
+                    label={t.identify.catalogStatus}
                     value={
-                      isLoadingFish ? "Loading..." : `${fishList.length} fish`
+                      isLoadingFish ? t.common.loading : `${fishList.length}`
                     }
                   />
                   <StatusRow
-                    label="Session"
-                    value={sessionUser ? "Signed in" : "Guest mode"}
+                    label={t.identify.sessionStatus}
+                    value={sessionUser ? t.identify.signedIn : t.identify.guestMode}
                   />
                   <StatusRow
-                    label="History saving"
+                    label={t.identify.historySaving}
                     value={
                       sessionUser
-                        ? "Automatic after prediction"
-                        : "Available after sign in"
+                        ? t.identify.autoSave
+                        : t.identify.availableSignIn
                     }
                   />
                 </div>
@@ -418,7 +424,7 @@ export default function IdentifyPage() {
                   disabled={isPredicting || isLoadingFish || !selectedFile}
                   className="w-full rounded-2xl bg-blue-600 px-4 py-4 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
                 >
-                  {isPredicting ? "Identifying..." : "Identify now"}
+                  {isPredicting ? t.identify.identifying : t.identify.identifyNow}
                 </button>
 
                 {!sessionUser ? (
@@ -427,14 +433,14 @@ export default function IdentifyPage() {
                     onClick={handleSignInForHistory}
                     className="w-full rounded-2xl bg-white px-4 py-4 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50"
                   >
-                    Sign in to save history automatically
+                    {t.identify.signInToSave}
                   </button>
                 ) : (
                   <Link
                     href="/history"
                     className="block w-full rounded-2xl bg-white px-4 py-4 text-center text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50"
                   >
-                    Open prediction history
+                    {t.identify.openHistory}
                   </Link>
                 )}
               </div>
@@ -452,7 +458,7 @@ export default function IdentifyPage() {
           <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-blue-600">AI Result</p>
+                <p className="text-sm font-semibold text-blue-600">{t.identify.aiResult}</p>
                 <h2 className="mt-2 text-4xl font-extrabold tracking-tight text-slate-900">
                   {displayName}
                 </h2>
@@ -467,13 +473,13 @@ export default function IdentifyPage() {
                     : "rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700"
                 }
               >
-                {prediction.prediction_type || "Prediction"}
+                {prediction.prediction_type || "-"}
               </span>
             </div>
 
             <div className="mt-5">
               <div className="mb-2 flex items-center justify-between text-sm">
-                <span className="font-semibold text-slate-700">Confidence</span>
+                <span className="font-semibold text-slate-700">{t.identify.confidence}</span>
                 <span className="font-bold text-blue-700">
                   {confidencePercent.toFixed(0)}%
                 </span>
@@ -488,20 +494,20 @@ export default function IdentifyPage() {
 
             <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <InfoCard
-                label="Predicted Class"
+                label={t.identify.predictedClass}
                 value={prediction.predicted_class || "-"}
               />
               <InfoCard
-                label="Raw Class"
+                label={t.identify.rawClass}
                 value={prediction.raw_predicted_class || "-"}
               />
               <InfoCard
-                label="Prediction Type"
+                label={t.identify.predictionType}
                 value={prediction.prediction_type || "-"}
               />
               <InfoCard
-                label="Catalog Match"
-                value={matchedFish?.name || "No exact match"}
+                label={t.identify.catalogMatch}
+                value={matchedFish ? (getLocalizedValue(matchedFish, "name", locale) || matchedFish.name) : "-"}
               />
             </div>
 
@@ -511,10 +517,10 @@ export default function IdentifyPage() {
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <p className="text-sm font-semibold text-blue-600">
-                        Matched Catalog Record
+                        {t.identify.matchedRecord}
                       </p>
                       <h3 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-900">
-                        {matchedFish.name}
+                        {getLocalizedValue(matchedFish, "name", locale) || matchedFish.name}
                       </h3>
                     </div>
 
@@ -523,34 +529,34 @@ export default function IdentifyPage() {
                       onClick={handleOpenFullDetails}
                       className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
                     >
-                      Open full details
+                      {t.identify.openDetails}
                     </button>
                   </div>
 
                   <p className="mt-4 text-sm leading-7 text-slate-600">
-                    {matchedFish.short_description ||
+                    {getLocalizedValue(matchedFish, "short_description", locale) ||
                       "Basic information is available for this fish species."}
                   </p>
 
                   <div className="mt-4 grid gap-4 md:grid-cols-3">
-                    <InfoCard label="Type" value={matchedFish.type || "-"} />
+                    <InfoCard label={t.identify.type} value={getLocalizedValue(matchedFish, "type", locale) || "-"} />
                     <InfoCard
-                      label="Category"
-                      value={matchedFish.category || "-"}
+                      label={t.identify.category}
+                      value={getLocalizedValue(matchedFish, "category", locale) || "-"}
                     />
                     <InfoCard
-                      label="Habitat"
-                      value={matchedFish.habitat || "-"}
+                      label={t.identify.habitat}
+                      value={getLocalizedValue(matchedFish, "habitat", locale) || "-"}
                     />
                   </div>
 
-                  {matchedFish.identify_text ? (
+                  {getLocalizedValue(matchedFish, "identify_text", locale) ? (
                     <div className="mt-4 rounded-2xl bg-white px-4 py-4 shadow-sm ring-1 ring-slate-200">
                       <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                        How to identify
+                        {t.identify.howToIdentify}
                       </p>
                       <p className="mt-2 text-sm leading-7 text-slate-700">
-                        {matchedFish.identify_text}
+                        {getLocalizedValue(matchedFish, "identify_text", locale)}
                       </p>
                     </div>
                   ) : null}
@@ -558,7 +564,7 @@ export default function IdentifyPage() {
               ) : (
                 <div className="space-y-4">
                   <div className="rounded-2xl bg-amber-50 px-4 py-4 text-sm text-amber-800">
-                    This prediction does not match a fish detail page yet.
+                    {t.identify.noMatchDesc}
                   </div>
 
                   <div className="flex flex-wrap gap-3">
@@ -566,7 +572,7 @@ export default function IdentifyPage() {
                       href="/fish"
                       className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
                     >
-                      Browse fish catalog
+                      {t.identify.browseCatalog}
                     </Link>
 
                     <button
@@ -574,7 +580,7 @@ export default function IdentifyPage() {
                       onClick={handleClearImage}
                       className="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50"
                     >
-                      Try another image
+                      {t.identify.tryAnother}
                     </button>
                   </div>
                 </div>
@@ -587,14 +593,14 @@ export default function IdentifyPage() {
                 onClick={handleClearImage}
                 className="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
               >
-                Start a new prediction
+                {t.identify.startNew}
               </button>
 
               <Link
                 href="/history"
                 className="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50"
               >
-                Open history
+                {t.identify.openHistory}
               </Link>
             </div>
           </section>

@@ -4,19 +4,21 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any, Optional
 
+import numpy as np
+
 from fastapi import HTTPException, UploadFile
 from PIL import Image
-from ultralytics import YOLO
+from tensorflow import keras
 
 
 class PredictionService:
     """
-    AquaSmart prediction service for YOLOv8 classification (.pt).
+    AquaSmart prediction service for Keras classification (.keras).
 
     Expected backend model bundle:
     aquasmart-backend/
       models/
-        aquasmart_best.pt
+        fish_model_inference.keras
         class_names.json
         model_config.json
         thresholds.json
@@ -26,12 +28,12 @@ class PredictionService:
         self.base_dir = Path(__file__).resolve().parent.parent.parent
         self.model_dir = self.base_dir / "models"
 
-        self.model_path = self.model_dir / "aquasmart_best.pt"
+        self.model_path = self.model_dir / "fish_model_inference.keras"
         self.class_names_path = self.model_dir / "class_names.json"
         self.model_config_path = self.model_dir / "model_config.json"
         self.thresholds_path = self.model_dir / "thresholds.json"
 
-        self.model: Optional[YOLO] = None
+        self.model: Optional[Any] = None
         self.class_names: list[str] = []
         self.model_config: dict[str, Any] = {}
         self.thresholds: dict[str, Any] = {}
@@ -64,19 +66,13 @@ class PredictionService:
             loaded_class_names = self._load_json(self.class_names_path, [])
 
             print(f"[INFO] Loading prediction model from: {self.model_path}")
-            self.model = YOLO(str(self.model_path))
+            self.model = keras.models.load_model(str(self.model_path))
 
             # Resolve class names
             if isinstance(loaded_class_names, list) and loaded_class_names:
                 self.class_names = [str(x) for x in loaded_class_names]
             else:
-                names = self.model.names
-                if isinstance(names, dict):
-                    self.class_names = [str(names[i]) for i in sorted(names.keys())]
-                elif isinstance(names, list):
-                    self.class_names = [str(x) for x in names]
-                else:
-                    self.class_names = []
+                self.class_names = []
 
             self.model_load_error = None
 
@@ -152,7 +148,7 @@ class PredictionService:
         )
 
     def _not_a_fish_enabled(self) -> bool:
-        value = self._threshold("not_a_fish_enabled", default=False)
+        value = self._threshold("not_a_fish_enabled", default=True)
         return bool(value)
 
     def _not_a_fish_confidence(self) -> float:
@@ -166,23 +162,12 @@ class PredictionService:
     # =========================================================
     # Inference helpers
     # =========================================================
-    def _extract_probabilities(self, result) -> list[float]:
-        probs = getattr(result, "probs", None)
-        if probs is None:
-            return []
-
-        data = getattr(probs, "data", None)
-        if data is None:
-            return []
-
-        try:
-            if hasattr(data, "tolist"):
-                values = data.tolist()
-            else:
-                values = list(data)
-
-            return [float(x) for x in values]
-        except Exception:
+    def _extract_probabilities(self, predictions) -> list[float]:
+        if isinstance(predictions, np.ndarray):
+            return predictions.flatten().tolist()
+        elif isinstance(predictions, list):
+            return predictions
+        else:
             return []
 
     def _get_class_name(self, index: int) -> str:
@@ -206,35 +191,35 @@ class PredictionService:
         Return:
         - predicted_class
         - prediction_type
-
-        Logic:
-        - If model confidence is strong enough and top1/top2 gap is clear:
-          return known_fish
-        - Otherwise return unknown_fish
-        - not_a_fish is disabled by default unless explicitly enabled
         """
         confidence_margin = top1_confidence - top2_confidence
         known_min = self._known_min_confidence()
-        unknown_max = self._unknown_max_confidence()
         margin_min = self._margin_threshold()
 
-        # Optional heuristic placeholder only
-        if self._not_a_fish_enabled():
-            not_a_fish_conf = self._not_a_fish_confidence()
-            if top1_confidence >= not_a_fish_conf and raw_predicted_class.lower() in {
-                "not_a_fish",
-                "non_fish",
-                "non-fish",
-                "background",
-            }:
-                return "not_a_fish", "rejected_non_fish"
+        is_non_fish = raw_predicted_class.lower() in {
+            "not_a_fish",
+            "non_fish",
+            "non-fish",
+            "background",
+        }
 
+        # 1. ตรวจสอบเงื่อนไข Not a Fish (ไม่ใช่ปลา)
+        if self._not_a_fish_enabled() and is_non_fish:
+            not_a_fish_conf = self._not_a_fish_confidence()
+            if top1_confidence >= not_a_fish_conf:
+                return "not_a_fish", "rejected_non_fish"
+            else:
+                return "unknown_fish", "rejected_unknown_fish"
+                
+        # ป้องกันไม่ให้โมเดลที่ทำนายได้ not_a_fish หลุดไปเป็น known_fish 
+        if is_non_fish:
+            return "unknown_fish", "rejected_unknown_fish"
+
+        # 2. ตรวจสอบเงื่อนไข Known Fish (ปลา 10 ชนิดที่โมเดลรู้จัก)
         if top1_confidence >= known_min and confidence_margin >= margin_min:
             return raw_predicted_class, "known_fish"
 
-        if top1_confidence <= unknown_max:
-            return "unknown_fish", "rejected_unknown_fish"
-
+        # 3. ตรวจสอบเงื่อนไข Unknown Fish (ไม่รู้ชนิดปลา เนื่องจากความมั่นใจน้อยเกินไป)
         return "unknown_fish", "rejected_unknown_fish"
 
     # =========================================================
@@ -255,17 +240,13 @@ class PredictionService:
             image = Image.open(BytesIO(contents)).convert("RGB")
             image_size = self.get_image_size()
 
-            results = self.model.predict(
-                source=image,
-                imgsz=image_size[0],
-                verbose=False,
-            )
-
-            if not results:
-                raise HTTPException(status_code=500, detail="No prediction results returned")
-
-            result = results[0]
-            probabilities = self._extract_probabilities(result)
+            image = image.resize(image_size)
+            image_array = np.array(image, dtype=np.float32)
+            # ใช้ preprocess_input แบบเดียวกับตอนเทรน MobileNetV3 (แก้ไขจุดเพี้ยน 21%)
+            image_array = keras.applications.mobilenet_v3.preprocess_input(image_array)
+            image_array = np.expand_dims(image_array, axis=0)
+            predictions = self.model.predict(image_array)
+            probabilities = self._extract_probabilities(predictions)
 
             if not probabilities:
                 raise HTTPException(status_code=500, detail="Model did not return probabilities")

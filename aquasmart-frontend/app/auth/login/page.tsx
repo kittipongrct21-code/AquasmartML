@@ -6,10 +6,12 @@ import { useRouter } from "next/navigation";
 import { getProfile } from "@/lib/api";
 import { supabase } from "@/lib/supabase-client";
 import { useToast } from "@/components/providers/ToastProvider";
+import { useI18n } from "@/lib/i18n-context";
 
 export default function LoginPage() {
   const router = useRouter();
   const { showError, showSuccess, showWarning } = useToast();
+  const { t: dict } = useI18n();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -115,7 +117,7 @@ export default function LoginPage() {
     return (
       <main className="min-h-screen px-4 py-8">
         <section className="mx-auto max-w-md rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-          <p className="text-sm text-slate-500">Checking session...</p>
+          <p className="text-sm text-slate-500">{dict.profile.checkingSession}</p>
         </section>
       </main>
     );
@@ -127,11 +129,10 @@ export default function LoginPage() {
         <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
           <p className="text-sm font-semibold text-blue-600">Auth</p>
           <h1 className="mt-2 text-4xl font-extrabold tracking-tight text-slate-900">
-            Sign In
+            {dict.auth.loginTitle}
           </h1>
           <p className="mt-3 text-sm leading-7 text-slate-600">
-            Sign in to access your profile, prediction history, and protected
-            pages.
+            {dict.auth.loginDesc}
           </p>
         </section>
 
@@ -142,7 +143,7 @@ export default function LoginPage() {
                 htmlFor="email"
                 className="mb-2 block text-sm font-semibold text-slate-700"
               >
-                Email
+                {dict.auth.emailLabel}
               </label>
               <input
                 id="email"
@@ -150,7 +151,7 @@ export default function LoginPage() {
                 autoComplete="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                placeholder="Enter your email"
+                placeholder={dict.auth.emailPlaceholder}
                 className="block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
               />
             </div>
@@ -160,7 +161,7 @@ export default function LoginPage() {
                 htmlFor="password"
                 className="mb-2 block text-sm font-semibold text-slate-700"
               >
-                Password
+                {dict.auth.passwordLabel}
               </label>
               <input
                 id="password"
@@ -168,7 +169,7 @@ export default function LoginPage() {
                 autoComplete="current-password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                placeholder="Enter your password"
+                placeholder={dict.auth.passwordPlaceholder}
                 className="block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
               />
             </div>
@@ -179,14 +180,14 @@ export default function LoginPage() {
                 disabled={isSubmitting}
                 className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
               >
-                {isSubmitting ? "Signing in..." : "Sign In"}
+                {isSubmitting ? dict.auth.signingIn : dict.auth.submitLogin}
               </button>
 
               <Link
                 href="/"
                 className="rounded-2xl bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
               >
-                Back to Home
+                {dict.auth.backToHome}
               </Link>
             </div>
           </form>
@@ -194,7 +195,7 @@ export default function LoginPage() {
 
         <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
           <p className="text-sm text-slate-600">
-            Don&apos;t have an account yet?
+            {dict.auth.noAccount}
           </p>
 
           <div className="mt-4">
@@ -202,7 +203,7 @@ export default function LoginPage() {
               href="/auth/signup"
               className="inline-flex rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
             >
-              Create Account
+              {dict.auth.submitSignup}
             </Link>
           </div>
         </section>

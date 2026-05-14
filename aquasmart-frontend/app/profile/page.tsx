@@ -9,8 +9,9 @@ import {
   uploadAvatar,
   type Profile,
 } from "@/lib/api";
-import { supabase } from "@/lib/supabase-client";
 import { useToast } from "@/components/providers/ToastProvider";
+import { useI18n } from "@/lib/i18n-context";
+import { supabase } from "@/lib/supabase-client";
 
 type SessionUser = {
   id: string;
@@ -20,6 +21,7 @@ type SessionUser = {
 export default function ProfilePage() {
   const router = useRouter();
   const { showError, showSuccess, showWarning } = useToast();
+  const { t: dict } = useI18n();
 
   const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -156,8 +158,8 @@ export default function ProfilePage() {
   }, [sessionUser?.id, sessionUser?.email]);
 
   const emailValue = useMemo(() => {
-    return profile?.email || sessionUser?.email || "Not available";
-  }, [profile, sessionUser]);
+    return profile?.email || sessionUser?.email || dict.profile.notAvailable;
+  }, [profile, sessionUser, dict.profile.notAvailable]);
 
   const roleValue = useMemo(() => {
     return profile?.role || "user";
@@ -271,7 +273,7 @@ export default function ProfilePage() {
     return (
       <main className="min-h-screen px-4 py-8">
         <section className="mx-auto max-w-5xl rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-          <p className="text-sm text-slate-500">Checking session...</p>
+          <p className="text-sm text-slate-500">{dict.profile.checkingSession}</p>
         </section>
       </main>
     );
@@ -282,19 +284,18 @@ export default function ProfilePage() {
       <main className="min-h-screen px-4 py-8">
         <section className="mx-auto max-w-5xl space-y-6">
           <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-            <p className="text-sm font-semibold text-blue-600">Profile</p>
+            <p className="text-sm font-semibold text-blue-600">{dict.nav.profile}</p>
             <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900">
-              Account Profile
+              {dict.profile.notSignedInTitle}
             </h1>
             <p className="mt-2 text-sm text-slate-600">
-              Sign in to manage your personal profile, avatar, password, and
-              prediction history.
+              {dict.profile.notSignedInDesc}
             </p>
           </section>
 
           <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
             <div className="rounded-2xl bg-amber-50 px-4 py-4 text-sm text-amber-700">
-              You are not signed in right now.
+              {dict.profile.notSignedInWarning}
             </div>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-3">
@@ -302,21 +303,21 @@ export default function ProfilePage() {
                 href="/auth/login"
                 className="rounded-2xl bg-blue-600 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-blue-700"
               >
-                Sign In
+                {dict.profile.signIn}
               </Link>
 
               <Link
                 href="/auth/signup"
                 className="rounded-2xl bg-slate-100 px-4 py-3 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
               >
-                Create Account
+                {dict.profile.createAccount}
               </Link>
 
               <Link
                 href="/"
                 className="rounded-2xl bg-white px-4 py-3 text-center text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50"
               >
-                Back to Home
+                {dict.auth.backToHome}
               </Link>
             </div>
           </section>
@@ -329,7 +330,7 @@ export default function ProfilePage() {
     return (
       <main className="min-h-screen px-4 py-8">
         <section className="mx-auto max-w-5xl rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-          <p className="text-sm text-slate-500">Loading profile...</p>
+          <p className="text-sm text-slate-500">{dict.profile.loadingProfile}</p>
         </section>
       </main>
     );
@@ -341,13 +342,12 @@ export default function ProfilePage() {
         <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <p className="text-sm font-semibold text-blue-600">Profile</p>
+              <p className="text-sm font-semibold text-blue-600">{dict.nav.profile}</p>
               <h1 className="mt-2 text-4xl font-extrabold tracking-tight text-slate-900">
-                Account Profile
+                {dict.profile.title}
               </h1>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
-                Manage your account information, upload an avatar, and access
-                your personal settings.
+                {dict.profile.desc}
               </p>
             </div>
 
@@ -357,7 +357,7 @@ export default function ProfilePage() {
               disabled={isSigningOut}
               className="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isSigningOut ? "Signing out..." : "Logout"}
+              {isSigningOut ? dict.profile.signingOut : dict.profile.logout}
             </button>
           </div>
         </section>
@@ -377,7 +377,7 @@ export default function ProfilePage() {
                 {avatarPreview ? (
                   <img
                     src={avatarPreview}
-                    alt="Profile avatar"
+                    alt={dict.profile.avatarTitle}
                     className="h-full w-full object-cover"
                   />
                 ) : (
@@ -394,7 +394,7 @@ export default function ProfilePage() {
               </p>
 
               <div className="mt-3 inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
-                Role: {roleValue}
+                {dict.profile.role}: {roleValue}
               </div>
 
               <div className="mt-5 w-full">
@@ -402,7 +402,7 @@ export default function ProfilePage() {
                   htmlFor="avatar-upload"
                   className="inline-flex w-full cursor-pointer items-center justify-center rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
                 >
-                  {isUploadingAvatar ? "Uploading..." : "Upload Avatar"}
+                  {isUploadingAvatar ? dict.profile.uploading : dict.profile.uploadAvatar}
                 </label>
 
                 <input
@@ -419,7 +419,7 @@ export default function ProfilePage() {
           <div className="space-y-6">
             <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
               <h2 className="text-xl font-bold text-slate-900">
-                Basic Information
+                {dict.profile.basicInfoTitle}
               </h2>
 
               <div className="mt-5 grid gap-4">
@@ -428,21 +428,21 @@ export default function ProfilePage() {
                     htmlFor="display-name"
                     className="mb-2 block text-sm font-semibold text-slate-700"
                   >
-                    Display Name
+                    {dict.auth.displayNameLabel}
                   </label>
                   <input
                     id="display-name"
                     type="text"
                     value={displayName}
                     onChange={(event) => setDisplayName(event.target.value)}
-                    placeholder="Enter your display name"
+                    placeholder={dict.auth.displayNamePlaceholder}
                     className="block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
                   />
                 </div>
 
                 <div>
                   <label className="mb-2 block text-sm font-semibold text-slate-700">
-                    Email
+                    {dict.auth.emailLabel}
                   </label>
                   <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-700">
                     {emailValue}
@@ -456,14 +456,14 @@ export default function ProfilePage() {
                     disabled={isSavingProfile}
                     className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
                   >
-                    {isSavingProfile ? "Saving..." : "Save Profile"}
+                    {isSavingProfile ? dict.profile.saving : dict.profile.saveProfile}
                   </button>
 
                   <Link
                     href="/history"
                     className="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
                   >
-                    View History
+                    {dict.profile.viewHistory}
                   </Link>
                 </div>
               </div>
@@ -471,12 +471,11 @@ export default function ProfilePage() {
 
             <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
               <h2 className="text-xl font-bold text-slate-900">
-                Security Settings
+                {dict.profile.securityTitle}
               </h2>
 
               <p className="mt-2 text-sm leading-7 text-slate-600">
-                Open the dedicated password page to update your current password
-                with a proper form and validation flow.
+                {dict.profile.securityDesc}
               </p>
 
               <div className="mt-4">
@@ -484,14 +483,14 @@ export default function ProfilePage() {
                   href="/profile/change-password"
                   className="inline-flex rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
                 >
-                  Change Password
+                  {dict.profile.changePassword}
                 </Link>
               </div>
             </section>
 
             <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
               <h2 className="text-xl font-bold text-slate-900">
-                Quick Actions
+                {dict.profile.quickActionsTitle}
               </h2>
 
               <div className="mt-4 grid gap-3 sm:grid-cols-3">
@@ -499,21 +498,21 @@ export default function ProfilePage() {
                   href="/identify"
                   className="rounded-2xl bg-slate-50 px-4 py-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
                 >
-                  Identify Fish
+                  {dict.profile.identifyFish}
                 </Link>
 
                 <Link
                   href="/fish"
                   className="rounded-2xl bg-slate-50 px-4 py-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
                 >
-                  Browse Fish
+                  {dict.profile.browseFish}
                 </Link>
 
                 <Link
                   href="/history"
                   className="rounded-2xl bg-slate-50 px-4 py-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
                 >
-                  Prediction History
+                  {dict.profile.predictionHistory}
                 </Link>
               </div>
             </section>
