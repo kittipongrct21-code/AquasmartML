@@ -1,7 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { dictionaries, Locale } from "./dictionaries";
+import React, { createContext, useContext, useState, ReactNode } from "react";
+import { dictionaries, type Locale } from "./dictionaries";
 
 type Dictionary = typeof dictionaries.en;
 
@@ -13,33 +13,28 @@ interface I18nContextType {
 
 const I18nContext = createContext<I18nContextType | undefined>(undefined);
 
-export function I18nProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>("en");
-  const [mounted, setMounted] = useState(false);
+function getInitialLocale(): Locale {
+  if (typeof window === "undefined") {
+    return "en";
+  }
 
-  // On mount, load locale from localStorage if available
-  useEffect(() => {
-    const savedLocale = localStorage.getItem("app_locale") as Locale;
-    if (savedLocale === "en" || savedLocale === "th") {
-      setLocaleState(savedLocale);
-    }
-    setMounted(true);
-  }, []);
+  const savedLocale = localStorage.getItem("app_locale");
+  return savedLocale === "th" ? "th" : "en";
+}
+
+export function I18nProvider({ children }: { children: ReactNode }) {
+  const [locale, setLocaleState] = useState<Locale>(getInitialLocale);
 
   const setLocale = (newLocale: Locale) => {
     setLocaleState(newLocale);
     localStorage.setItem("app_locale", newLocale);
   };
 
-  const t = dictionaries[locale];
+  const t = dictionaries[locale] ?? dictionaries.en;
 
-  // Provide context immediately to avoid 'undefined' context errors in children
-  // Use visibility hidden before mount to prevent hydration text flashes if locale changes
   return (
     <I18nContext.Provider value={{ locale, t, setLocale }}>
-      <div style={{ visibility: mounted ? 'visible' : 'hidden', display: 'contents' }}>
-        {children}
-      </div>
+      {children}
     </I18nContext.Provider>
   );
 }

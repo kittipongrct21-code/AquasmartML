@@ -15,7 +15,7 @@ type SessionUser = {
 
 export default function ChangePasswordPage() {
   return (
-    <AccessGuard mode="signed_in">
+    <AccessGuard requireAuth>
       <ChangePasswordPageContent />
     </AccessGuard>
   );

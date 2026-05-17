@@ -1,5 +1,7 @@
 // ... (ส่วนบนของไฟล์คงเดิม)
 
+export type Locale = "en" | "th";
+
 export const dictionaries = {
   en: {
     common: {
