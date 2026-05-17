@@ -1,8 +1,9 @@
 "use client";
 
-import { ChangeEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, useEffect, useMemo, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic"; // 🚨 นำเข้า dynamic สำหรับทำ Lazy Loading
 import {
   getProfile,
   updateProfile,
@@ -13,6 +14,11 @@ import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/lib/i18n-context";
 import { supabase } from "@/lib/supabase-client";
 
+// 🚨 เรียกใช้งาน CropModal แบบ Dynamic และปิด SSR (ssr: false) เพื่อแก้ปัญหา Window / Canvas บั๊กบน Server
+const CropModal = dynamic(() => import("@/components/profile/CropModal"), {
+  ssr: false,
+});
+
 type SessionUser = {
   id: string;
   email?: string | null;
@@ -21,7 +27,7 @@ type SessionUser = {
 export default function ProfilePage() {
   const router = useRouter();
   const { showError, showSuccess, showWarning } = useToast();
-  const { t: dict } = useI18n();
+  const { t: dict, locale } = useI18n();
 
   const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -36,6 +42,11 @@ export default function ProfilePage() {
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   const [pageError, setPageError] = useState("");
+
+  // State เพิ่มเติมสำหรับระบบ Crop
+  const [imageToCrop, setImageToCrop] = useState<string | null>(null);
+  const [isCropping, setIsCropping] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -165,6 +176,12 @@ export default function ProfilePage() {
     return profile?.role || "user";
   }, [profile]);
 
+  const isAdmin = roleValue === "admin";
+  const adminPanelLabel =
+    locale === "th" ? "เข้าสู่หน้าแอดมิน" : "Open Admin Panel";
+  const adminShortcutLabel =
+    locale === "th" ? "จัดการรายการปลา" : "Manage Fish Catalog";
+
   async function handleSaveProfile() {
     if (!sessionUser?.id) {
       showWarning("You must sign in first.");
@@ -201,7 +218,7 @@ export default function ProfilePage() {
       }
 
       setProfile(nextProfile);
-      showSuccess("Profile updated successfully.");
+      showSuccess(dict.common.save ? `${dict.common.save} Success` : "Profile updated successfully.");
     } catch (error) {
       console.error("Failed to update profile:", error);
       showError(
@@ -212,6 +229,7 @@ export default function ProfilePage() {
     }
   }
 
+  // ฟังก์ชันเลือกไฟล์ให้อ่านรูปลง CropModal
   async function handleAvatarChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file || !sessionUser?.id) return;
@@ -222,12 +240,30 @@ export default function ProfilePage() {
       return;
     }
 
+    const reader = new FileReader();
+    reader.onload = () => {
+      setImageToCrop(reader.result as string);
+      setIsCropping(true);
+    };
+    reader.readAsDataURL(file);
+
+    event.target.value = "";
+  }
+
+  // ฟังก์ชันรับ Blob เมื่อ Crop เสร็จแล้วเพื่อนำไปอัปโหลดจริง
+  async function handleCropComplete(croppedBlob: Blob) {
+    setIsCropping(false);
+    setImageToCrop(null);
+
+    if (!sessionUser?.id) return;
+
     try {
       setIsUploadingAvatar(true);
 
-      const localPreview = URL.createObjectURL(file);
+      const localPreview = URL.createObjectURL(croppedBlob);
       setAvatarPreview(localPreview);
 
+      const file = new File([croppedBlob], "avatar.jpg", { type: "image/jpeg" });
       const response = await uploadAvatar(sessionUser.id, file);
       const avatarUrl = response.avatar_url;
 
@@ -242,15 +278,14 @@ export default function ProfilePage() {
 
       setAvatarPreview(avatarUrl);
       showSuccess("Avatar uploaded successfully.");
-      URL.revokeObjectURL(localPreview);
     } catch (error) {
       console.error("Failed to upload avatar:", error);
       showError(
         error instanceof Error ? error.message : "Failed to upload avatar."
       );
+      setAvatarPreview(profile?.avatar_url || "");
     } finally {
       setIsUploadingAvatar(false);
-      event.target.value = "";
     }
   }
 
@@ -373,7 +408,7 @@ export default function ProfilePage() {
         <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
           <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
             <div className="flex flex-col items-center text-center">
-              <div className="flex h-36 w-36 items-center justify-center overflow-hidden rounded-full bg-slate-100 ring-4 ring-slate-100">
+              <div className="relative flex h-36 w-36 items-center justify-center overflow-hidden rounded-full bg-slate-100 ring-4 ring-slate-100">
                 {avatarPreview ? (
                   <img
                     src={avatarPreview}
@@ -381,7 +416,14 @@ export default function ProfilePage() {
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <span className="text-3xl font-bold text-slate-400">AS</span>
+                  <span className="text-3xl font-bold text-slate-400">
+                    {displayName?.charAt(0).toUpperCase() || "AS"}
+                  </span>
+                )}
+                {isUploadingAvatar && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-sm">
+                    <span className="text-xs font-semibold text-blue-600">Uploading...</span>
+                  </div>
                 )}
               </div>
 
@@ -400,16 +442,18 @@ export default function ProfilePage() {
               <div className="mt-5 w-full">
                 <label
                   htmlFor="avatar-upload"
-                  className="inline-flex w-full cursor-pointer items-center justify-center rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+                  className={`inline-flex w-full cursor-pointer items-center justify-center rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 ${isUploadingAvatar ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   {isUploadingAvatar ? dict.profile.uploading : dict.profile.uploadAvatar}
                 </label>
 
                 <input
                   id="avatar-upload"
+                  ref={fileInputRef}
                   type="file"
                   accept="image/png,image/jpeg,image/webp"
                   onChange={handleAvatarChange}
+                  disabled={isUploadingAvatar}
                   className="hidden"
                 />
               </div>
@@ -465,6 +509,15 @@ export default function ProfilePage() {
                   >
                     {dict.profile.viewHistory}
                   </Link>
+
+                  {isAdmin ? (
+                    <Link
+                      href="/admin/fish"
+                      className="rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                    >
+                      {adminPanelLabel}
+                    </Link>
+                  ) : null}
                 </div>
               </div>
             </section>
@@ -514,11 +567,32 @@ export default function ProfilePage() {
                 >
                   {dict.profile.predictionHistory}
                 </Link>
+
+                {isAdmin ? (
+                  <Link
+                    href="/admin/fish"
+                    className="rounded-2xl bg-emerald-50 px-4 py-4 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100"
+                  >
+                    {adminShortcutLabel}
+                  </Link>
+                ) : null}
               </div>
             </section>
           </div>
         </div>
       </section>
+
+      {/* เรียกใช้ CropModal วงกลมครอปภาพเมื่อมีการเลือกไฟล์ */}
+      {isCropping && imageToCrop && (
+        <CropModal
+          imageSrc={imageToCrop}
+          onCropComplete={handleCropComplete}
+          onCancel={() => {
+            setIsCropping(false);
+            setImageToCrop(null);
+          }}
+        />
+      )}
     </main>
   );
 }

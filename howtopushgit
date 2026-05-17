@@ -1,0 +1,4 @@
+git status ดูก่อนว่ามีอะไรค้าง
+git add .
+git commit -m "ข้อความ"
+git push

@@ -6,24 +6,19 @@ import time
 import traceback
 from pathlib import Path
 from typing import Optional, Callable, Any
-
 import httpx
 from dotenv import load_dotenv
-from fastapi import FastAPI, UploadFile, File, HTTPException, Form, Request
+from fastapi import FastAPI, UploadFile, File, HTTPException, Form, Request, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from supabase import create_client
-
 from app.services.prediction_service import prediction_service
-
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from fastapi.responses import JSONResponse
 
-# =========================================================
 # Patch httpx to disable SSL verification for local development
-# =========================================================
 VERIFY_SSL = os.getenv("VERIFY_SSL", "true").lower() == "true"
 ENV = os.getenv("ENV", "production")
 
@@ -41,9 +36,7 @@ def patched_async_client(*args, **kwargs):
     return original_async_client(*args, **kwargs)
 httpx.AsyncClient = patched_async_client
 
-# =========================================================
 # Environment
-# =========================================================
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
@@ -57,23 +50,44 @@ SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
 if not SUPABASE_URL or not SUPABASE_SECRET_KEY:
     raise RuntimeError("Missing SUPABASE_URL or SUPABASE_SECRET_KEY in .env")
 
-# =========================================================
 # Constants
-# =========================================================
 IMAGE_MIME_TO_EXT = {
     "image/jpeg": ".jpg",
     "image/png": ".png",
     "image/webp": ".webp",
 }
 
-# =========================================================
 # Supabase helpers
-# =========================================================
 def get_supabase():
     return create_client(SUPABASE_URL, SUPABASE_SECRET_KEY)
 
+async def verify_admin_authorization(authorization: str = Header(default=None)):
+    """ตรวจสอบ Bearer Token และ Role = admin ก่อนเข้าถึง Admin API"""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing or invalid token")
+
+    token = authorization.split(" ")[1]
+    client = get_supabase()
+
+    try:
+        # 1. ตรวจสอบ Token กับ Supabase Auth
+        user_res = client.auth.get_user(token)
+        if not user_res.user:
+            raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+        # 2. ตรวจสอบ Role ในตาราง profiles
+        profile_res = client.table("profiles").select("role").eq("id", user_res.user.id).maybe_single().execute()
+        if not profile_res.data or profile_res.data.get("role") != "admin":
+            raise HTTPException(status_code=403, detail="Admin access required")
+
+        return user_res.user
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] Admin auth middleware failed: {e}")
+        raise HTTPException(status_code=500, detail="Authentication service error")
+
 def get_supabase_auth_client():
-    """Client for end-user auth operations. Prefer anon key for password checks."""
     return create_client(SUPABASE_URL, SUPABASE_ANON_KEY or SUPABASE_SECRET_KEY)
 
 def run_query(label: str, builder_factory: Callable[[Any], Any], retries: int = 3, base_delay: float = 0.6):
@@ -165,12 +179,9 @@ def guess_extension(file_name: Optional[str], content_type: Optional[str]) -> st
             return ext
     return ".bin"
 
-# =========================================================
 # FastAPI app
-# =========================================================
 app = FastAPI(title="AquaSmart ML API")
 
-# Rate limiting setup
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 
@@ -178,13 +189,10 @@ app.state.limiter = limiter
 async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
     return JSONResponse(status_code=429, content={"detail": "Too many requests"})
 
-# CORS from env
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
 app.add_middleware(CORSMiddleware, allow_origins=[o.strip() for o in ALLOWED_ORIGINS if o.strip()], allow_origin_regex=os.getenv("ALLOWED_ORIGIN_REGEX", r"https://.*\.vercel\.app"), allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
-# =========================================================
 # Schemas
-# =========================================================
 class FishGeneralSchema(BaseModel):
     name: str; slug: str; short_description: Optional[str] = None; type: Optional[str] = None; category: Optional[str] = None; habitat: Optional[str] = None; identify_text: Optional[str] = None; average_lifespan: Optional[str] = None; adult_size: Optional[str] = None; cover_image_url: Optional[str] = None; is_active: bool = True; origin: Optional[str] = None; name_th: Optional[str] = None; short_description_th: Optional[str] = None; type_th: Optional[str] = None; category_th: Optional[str] = None; habitat_th: Optional[str] = None; identify_text_th: Optional[str] = None; origin_th: Optional[str] = None
 
@@ -218,9 +226,7 @@ class HistoryCreatePayload(BaseModel):
 class FavoritePayload(BaseModel):
     user_id: str; fish_id: int
 
-# =========================================================
 # Fish helpers
-# =========================================================
 def set_cover_image_for_fish(fish_id: int, image_id: int, image_url: str):
     run_query("unset old cover flags", lambda db: db.table("fish_images").update({"is_cover": False}).eq("fish_id", fish_id))
     run_query("set new cover", lambda db: db.table("fish_images").update({"is_cover": True}).eq("id", image_id).eq("fish_id", fish_id))
@@ -288,9 +294,7 @@ def save_prediction_history_record(*, user_id: str, result: dict, uploaded_image
     payload = {"user_id": user_id, "uploaded_image_url": uploaded_image_url, "predicted_class": predicted_class, "confidence_percent": confidence_percent, "result_json": result, "fish_id": matched_fish.get("id") if matched_fish else None, "fish_name": matched_fish.get("name") if matched_fish else None, "raw_predicted_class": raw_predicted_class, "prediction_type": prediction_type, "image_url": uploaded_image_url}
     run_query("save prediction history", lambda db: db.table("prediction_history").insert(payload))
 
-# =========================================================
 # Root / Health
-# =========================================================
 @app.get("/")
 def root():
     return {"message": "AquaSmart ML API is running"}
@@ -299,9 +303,7 @@ def root():
 def health():
     return {"status": "ok", "model_loaded": prediction_service.is_loaded(), "model_error": prediction_service.model_load_error, "classes": prediction_service.class_names}
 
-# =========================================================
-# Public fish endpoints (ORDER MATTERS: specific before generic)
-# =========================================================
+# Public fish endpoints
 @app.get("/fish")
 def get_fish(q: Optional[str] = None):
     def build_query(db):
@@ -314,7 +316,7 @@ def get_fish(q: Optional[str] = None):
     response = run_query("public fish list", build_query)
     return {"data": response.data or []}
 
-@app.get("/fish/top-searched")  # ← SPECIFIC route FIRST
+@app.get("/fish/top-searched")
 def get_top_searched(limit: int = 6):
     try:
         db = get_supabase()
@@ -324,16 +326,14 @@ def get_top_searched(limit: int = 6):
         print(f"Top fish error: {e}")
         return []
 
-@app.get("/fish/{fish_id:int}")  # ← GENERIC route LAST (with type hint)
+@app.get("/fish/{fish_id:int}")
 def get_public_fish_by_id(fish_id: int):
     data = get_fish_full_detail_by_id(fish_id)
     if not data or not data["fish"].get("is_active"):
         raise HTTPException(status_code=404, detail="Fish not found")
     return data
 
-# =========================================================
 # Prediction endpoint
-# =========================================================
 @app.post("/predict")
 @limiter.limit("10/minute")
 async def predict(request: Request, file: UploadFile = File(...), user_id: Optional[str] = Form(None)):
@@ -363,10 +363,10 @@ async def predict(request: Request, file: UploadFile = File(...), user_id: Optio
             traceback.print_exc()
     return result
 
-# =========================================================
-# Admin fish endpoints
-# =========================================================
-@app.get("/admin/fish")
+# ==========================================
+# Admin fish endpoints (Secured with Depends)
+# ==========================================
+@app.get("/admin/fish", dependencies=[Depends(verify_admin_authorization)])
 def admin_get_fish(q: Optional[str] = None, status: Optional[str] = None, category: Optional[str] = None, fish_type: Optional[str] = None):
     def build_query(db):
         query = db.table("fish_species").select("*").order("id")
@@ -386,14 +386,14 @@ def admin_get_fish(q: Optional[str] = None, status: Optional[str] = None, catego
     response = run_query("admin fish list", build_query)
     return {"data": response.data or []}
 
-@app.get("/admin/fish/{fish_id:int}")
+@app.get("/admin/fish/{fish_id:int}", dependencies=[Depends(verify_admin_authorization)])
 def admin_get_fish_by_id(fish_id: int):
     data = get_fish_full_detail_by_id(fish_id)
     if not data:
         raise HTTPException(status_code=404, detail="Fish not found")
     return data
 
-@app.post("/admin/fish")
+@app.post("/admin/fish", dependencies=[Depends(verify_admin_authorization)])
 def admin_create_fish(payload: FishPayload):
     general_data = safe_model_dump(payload.general)
     fish_response = run_query("create fish_species", lambda db: db.table("fish_species").insert(general_data))
@@ -412,7 +412,7 @@ def admin_create_fish(payload: FishPayload):
     upsert_cover_image(fish_id=fish_id, image_url=general_data.get("cover_image_url"), fish_name=general_data.get("name"))
     return {"message": "Fish created successfully", "data": get_fish_full_detail_by_id(fish_id)}
 
-@app.put("/admin/fish/{fish_id:int}")
+@app.put("/admin/fish/{fish_id:int}", dependencies=[Depends(verify_admin_authorization)])
 def admin_update_fish(fish_id: int, payload: FishPayload):
     existing = run_query("check fish exists before update", lambda db: db.table("fish_species").select("id").eq("id", fish_id).maybe_single())
     if not existing.data:
@@ -438,7 +438,7 @@ def admin_update_fish(fish_id: int, payload: FishPayload):
     upsert_cover_image(fish_id=fish_id, image_url=general_data.get("cover_image_url"), fish_name=general_data.get("name"))
     return {"message": "Fish updated successfully", "data": get_fish_full_detail_by_id(fish_id)}
 
-@app.patch("/admin/fish/{fish_id:int}/status")
+@app.patch("/admin/fish/{fish_id:int}/status", dependencies=[Depends(verify_admin_authorization)])
 def admin_toggle_fish_status(fish_id: int):
     existing = run_query("check fish exists before status toggle", lambda db: db.table("fish_species").select("id, is_active").eq("id", fish_id).maybe_single())
     if not existing.data:
@@ -447,7 +447,7 @@ def admin_toggle_fish_status(fish_id: int):
     updated = run_query("toggle fish status", lambda db: db.table("fish_species").update({"is_active": new_status}).eq("id", fish_id))
     return {"message": "Fish status updated successfully", "data": updated.data[0] if updated.data else {"id": fish_id, "is_active": new_status}}
 
-@app.delete("/admin/fish/{fish_id:int}")
+@app.delete("/admin/fish/{fish_id:int}", dependencies=[Depends(verify_admin_authorization)])
 def admin_delete_fish(fish_id: int):
     existing = run_query("check fish exists before delete", lambda db: db.table("fish_species").select("id").eq("id", fish_id).maybe_single())
     if not existing.data:
@@ -458,10 +458,10 @@ def admin_delete_fish(fish_id: int):
     run_query("delete fish_species", lambda db: db.table("fish_species").delete().eq("id", fish_id))
     return {"message": "Fish deleted successfully"}
 
-# =========================================================
-# Admin image endpoints
-# =========================================================
-@app.post("/admin/upload-image")
+# ==========================================
+# Admin image endpoints (Secured with Depends)
+# ==========================================
+@app.post("/admin/upload-image", dependencies=[Depends(verify_admin_authorization)])
 async def admin_upload_image(file: UploadFile = File(...)):
     if file.content_type not in IMAGE_MIME_TO_EXT:
         raise HTTPException(status_code=400, detail="Only JPG, PNG, and WEBP images are allowed")
@@ -474,12 +474,12 @@ async def admin_upload_image(file: UploadFile = File(...)):
     uploaded = upload_bytes_to_bucket(bucket_name=SUPABASE_STORAGE_BUCKET, file_path=file_path, contents=contents, content_type=file.content_type, upsert=True)
     return {"message": "Image uploaded successfully", **uploaded}
 
-@app.get("/admin/fish/{fish_id:int}/images")
+@app.get("/admin/fish/{fish_id:int}/images", dependencies=[Depends(verify_admin_authorization)])
 def admin_get_fish_images(fish_id: int):
     response = run_query("admin fish images", lambda db: db.table("fish_images").select("*").eq("fish_id", fish_id).order("id"))
     return {"data": response.data or []}
 
-@app.post("/admin/fish/{fish_id:int}/images")
+@app.post("/admin/fish/{fish_id:int}/images", dependencies=[Depends(verify_admin_authorization)])
 def admin_add_fish_image(fish_id: int, payload: FishImagePayload):
     fish = run_query("check fish exists before add image", lambda db: db.table("fish_species").select("id, cover_image_url").eq("id", fish_id).maybe_single())
     if not fish.data:
@@ -496,7 +496,7 @@ def admin_add_fish_image(fish_id: int, payload: FishImagePayload):
         image = refreshed.data or image
     return {"message": "Image added successfully", "data": image}
 
-@app.put("/admin/fish/images/{image_id:int}/cover")
+@app.put("/admin/fish/images/{image_id:int}/cover", dependencies=[Depends(verify_admin_authorization)])
 def admin_set_fish_cover(image_id: int):
     image = run_query("find image", lambda db: db.table("fish_images").select("*").eq("id", image_id).maybe_single())
     if not image.data:
@@ -507,7 +507,7 @@ def admin_set_fish_cover(image_id: int):
     updated_fish = run_query("get updated fish after set cover", lambda db: db.table("fish_species").select("*").eq("id", fish_id).maybe_single())
     return {"message": "Cover image updated successfully", "data": {"fish_id": fish_id, "image_id": image_id, "cover_image_url": image_url, "fish": updated_fish.data}}
 
-@app.delete("/admin/fish/images/{image_id:int}")
+@app.delete("/admin/fish/images/{image_id:int}", dependencies=[Depends(verify_admin_authorization)])
 def admin_delete_fish_image(image_id: int):
     image = run_query("find image before delete", lambda db: db.table("fish_images").select("*").eq("id", image_id).maybe_single())
     if not image.data:
@@ -525,9 +525,7 @@ def admin_delete_fish_image(image_id: int):
             run_query("clear fish cover after deleting last image", lambda db: db.table("fish_species").update({"cover_image_url": None}).eq("id", fish_id))
     return {"message": "Image deleted successfully"}
 
-# =========================================================
 # Profile endpoints
-# =========================================================
 @app.get("/profile/{user_id}")
 def get_profile(user_id: str):
     profile = run_query("get profile", lambda db: db.table("profiles").select("*").eq("id", user_id).maybe_single())
@@ -589,9 +587,7 @@ def change_password(user_id: str, payload: PasswordChangePayload):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to update password: {str(e)}")
 
-# =========================================================
 # History endpoints
-# =========================================================
 @app.post("/history")
 def create_history(payload: HistoryCreatePayload):
     data = safe_model_dump(payload)
@@ -616,9 +612,7 @@ def get_prediction_history(user_id: str):
     history = run_query("get prediction history by user", lambda db: db.table("prediction_history").select("*").eq("user_id", user_id).order("created_at", desc=True))
     return {"data": history.data or []}
 
-# =========================================================
 # Favorites endpoints
-# =========================================================
 @app.get("/favorites/{user_id}")
 def get_favorites(user_id: str):
     favorites = run_query("get favorites by user", lambda db: db.table("favorites").select("*, fish_species(*)").eq("user_id", user_id).order("created_at", desc=True))
@@ -637,9 +631,7 @@ def remove_favorite(user_id: str, fish_id: int):
     run_query("remove favorite", lambda db: db.table("favorites").delete().eq("user_id", user_id).eq("fish_id", fish_id))
     return {"message": "Favorite removed successfully"}
 
-# =========================================================
 # Auth endpoints
-# =========================================================
 @app.post("/auth/signup")
 def signup(payload: AuthSignupPayload):
     try:
@@ -685,9 +677,7 @@ def logout():
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Logout failed: {str(e)}")
 
-# =========================================================
 # Windows-safe runner
-# =========================================================
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.main:app", host="127.0.0.1", port=8000, reload=False)

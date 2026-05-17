@@ -1,3 +1,4 @@
+import { supabase } from "@/lib/supabase-client";
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
 
@@ -252,23 +253,33 @@ export type FavoritePayload = {
 };
 
 /* =========================================================
-   Internal helpers
+   Internal helpers (Fixed and Enhanced)
 ========================================================= */
 
 async function parseError(response: Response, fallback: string): Promise<never> {
+  let message = fallback;
   try {
-    const data = await response.json();
-    const message =
-      data?.detail ||
-      data?.message ||
-      data?.error_description ||
-      data?.error ||
-      fallback;
-    throw new Error(message);
-  } catch {
     const text = await response.text().catch(() => "");
-    throw new Error(text || fallback);
+    try {
+      const data = JSON.parse(text);
+      if (data && data.detail) {
+        if (typeof data.detail === "string") {
+          message = data.detail;
+        } else {
+          message = JSON.stringify(data.detail);
+        }
+      } else if (data && data.message) {
+        message = data.message;
+      } else if (text) {
+        message = text;
+      }
+    } catch {
+      if (text) message = text;
+    }
+  } catch (e) {
+    console.error("Failed to parse error response:", e);
   }
+  throw new Error(message);
 }
 
 async function requestJson<T>(
@@ -276,15 +287,29 @@ async function requestJson<T>(
   init?: RequestInit,
   fallbackMessage = "Request failed"
 ): Promise<T> {
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  const headers = new Headers(init?.headers);
+  if (session?.access_token) {
+    headers.set("Authorization", `Bearer ${session.access_token}`);
+  }
+  
+  // 🚨 FIXED: ถ้า body เป็นอินสแตนซ์ของ FormData ห้ามบังคับใส่แอปพลิเคชัน JSON เด็ดขาด
+  if (!headers.has("Content-Type") && init?.body) {
+    if (!(init.body instanceof FormData)) {
+      headers.set("Content-Type", "application/json");
+    }
+  }
+
   const response = await fetch(url, {
     ...init,
+    headers,
     cache: "no-store",
   });
 
   if (!response.ok) {
     await parseError(response, fallbackMessage);
   }
-
   return response.json() as Promise<T>;
 }
 
@@ -396,9 +421,6 @@ export async function createFish(payload: FishPayload) {
     `${API_BASE_URL}/admin/fish`,
     {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
       body: JSON.stringify(payload),
     },
     "Failed to create fish"
@@ -413,9 +435,6 @@ export async function updateFish(
     `${API_BASE_URL}/admin/fish/${fishId}`,
     {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
       body: JSON.stringify(payload),
     },
     "Failed to update fish"
@@ -480,9 +499,6 @@ export async function addFishImage(
     `${API_BASE_URL}/admin/fish/${fishId}/images`,
     {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
       body: JSON.stringify(payload),
     },
     "Failed to add fish image"
@@ -530,9 +546,6 @@ export async function createHistory(payload: HistoryCreatePayload) {
     `${API_BASE_URL}/history`,
     {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
       body: JSON.stringify(payload),
     },
     "Failed to create history"
@@ -589,9 +602,6 @@ export async function updateProfile(
     `${API_BASE_URL}/profile/${userId}`,
     {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
       body: JSON.stringify(payload),
     },
     "Failed to update profile"
@@ -621,58 +631,9 @@ export async function changePassword(userId: string, payload: {
     `${API_BASE_URL}/profile/${userId}/password`,
     {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
       body: JSON.stringify(payload),
     },
     "Failed to change password"
-  );
-}
-
-/* =========================================================
-   Auth APIs
-========================================================= */
-
-export async function signup(payload: {
-  email: string;
-  password: string;
-  display_name?: string;
-}) {
-  return requestJson<{ message: string; data: AuthResponseData }>(
-    `${API_BASE_URL}/auth/signup`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    },
-    "Signup failed"
-  );
-}
-
-export async function login(payload: AuthPayload) {
-  return requestJson<{ message: string; data: AuthResponseData }>(
-    `${API_BASE_URL}/auth/login`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    },
-    "Login failed"
-  );
-}
-
-export async function logout() {
-  return requestJson<{ message: string }>(
-    `${API_BASE_URL}/auth/logout`,
-    {
-      method: "POST",
-    },
-    "Logout failed"
   );
 }
 
@@ -695,9 +656,6 @@ export async function addFavorite(payload: FavoritePayload) {
     `${API_BASE_URL}/favorites`,
     {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
       body: JSON.stringify(payload),
     },
     "Failed to add favorite"

@@ -52,7 +52,7 @@ export function useI18n() {
   return context;
 }
 
-export function getLocalizedValue<T extends Record<string, any>>(
+export function getLocalizedValue<T extends Record<string, unknown>>(
   obj: T | null | undefined,
   key: keyof T & string,
   locale: Locale

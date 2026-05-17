@@ -28,6 +28,7 @@ const API_BASE_URL =
 export default function IdentifyPage() {
   const router = useRouter();
   const { locale, t } = useI18n();
+  
   const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
   const [fishList, setFishList] = useState<FishListItem[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -179,6 +180,7 @@ export default function IdentifyPage() {
     });
 
     const text = await response.text();
+    // Explicitly type the JSON response to handle both Success and Error cases
     let json: PredictionResponse | { detail?: string };
 
     try {
@@ -188,12 +190,11 @@ export default function IdentifyPage() {
     }
 
     if (!response.ok) {
-      const detail =
-        typeof json === "object" && json && "detail" in json
-          ? json.detail
-          : null;
-
-      throw new Error(detail || "Prediction failed.");
+      // ✅ Type Guard: ตรวจสอบอย่างปลอดภัยว่า key 'detail' มีอยู่จริง
+      if ("detail" in json && typeof json.detail === "string") {
+        throw new Error(json.detail);
+      }
+      throw new Error("Prediction failed.");
     }
 
     return json as PredictionResponse;
@@ -312,7 +313,8 @@ export default function IdentifyPage() {
         <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
           <div className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
             <div>
-              <div className="relative flex min-h-[320px] items-center justify-center overflow-hidden rounded-3xl bg-slate-100">
+              {/* ✅ Tailwind Fix: ใช้ min-h-80 แทน min-h-[320px] */}
+              <div className="relative flex min-h-80 items-center justify-center overflow-hidden rounded-3xl bg-slate-100">
                 {previewUrl ? (
                   <Image
                     src={previewUrl}

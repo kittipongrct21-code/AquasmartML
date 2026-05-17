@@ -1,222 +1,117 @@
 "use client";
-
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useRouter, usePathname } from "next/navigation";
+import { getProfile } from "@/lib/api";
 import { supabase } from "@/lib/supabase-client";
-import { getProfile, type Profile } from "@/lib/api";
+import { Loader2 } from "lucide-react";
 
-type SessionUser = {
-  id: string;
-  email?: string | null;
-};
-
-type GuardMode = "signed_in" | "admin";
-
-export default function AccessGuard({
-  mode,
-  children,
-}: {
-  mode: GuardMode;
+interface AccessGuardProps {
   children: React.ReactNode;
-}) {
+  requireAuth?: boolean;
+  fallback?: React.ReactNode;
+  mode?: "auth" | "admin";
+}
+
+export function AccessGuard({
+  children,
+  requireAuth = false,
+  fallback,
+  mode = "auth",
+}: AccessGuardProps) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [isLoading, setIsLoading] = useState(true);
-  const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthorized, setIsAuthorized] = useState(false);
 
   useEffect(() => {
-    let isMounted = true;
+    let active = true;
 
-    async function bootstrap() {
+    const checkAuth = async () => {
       try {
-        setIsLoading(true);
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!active) return;
 
-        const sessionData = await supabase.auth.getSession();
-        const user = sessionData.data.session?.user ?? null;
+        const signedIn = !!session;
+        const needsAuth = requireAuth || mode === "admin";
 
-        if (!isMounted) return;
+        setIsAuthenticated(signedIn);
 
-        if (!user) {
-          setSessionUser(null);
-          setProfile(null);
+        if (needsAuth && !session) {
+          router.push(`/auth/login?redirect=${encodeURIComponent(pathname)}`);
           return;
         }
 
-        const nextUser: SessionUser = {
-          id: user.id,
-          email: user.email ?? null,
-        };
+        if (mode === "admin" && session?.user) {
+          const profile = await getProfile(session.user.id);
+          if (!active) return;
 
-        setSessionUser(nextUser);
+          const allowed = profile?.role === "admin";
+          setIsAuthorized(allowed);
 
-        try {
-          const backendProfile = await getProfile(user.id);
-
-          if (!isMounted) return;
-
-          setProfile({
-            ...backendProfile,
-            email: backendProfile.email || user.email || null,
-          });
-        } catch (error) {
-          console.warn("AccessGuard profile fallback:", error);
-
-          if (!isMounted) return;
-
-          setProfile({
-            id: user.id,
-            email: user.email ?? null,
-            display_name: "",
-            avatar_url: null,
-            role: "user",
-          });
+          if (!allowed) {
+            router.push("/profile");
+            return;
+          }
+        } else {
+          setIsAuthorized(signedIn || !needsAuth);
         }
       } catch (error) {
-        console.error("AccessGuard bootstrap error:", error);
-
-        if (!isMounted) return;
-
-        setSessionUser(null);
-        setProfile(null);
+        console.error("Auth check failed:", error);
+        if (!active) return;
+        setIsAuthorized(false);
       } finally {
-        if (isMounted) {
+        if (active) {
           setIsLoading(false);
         }
       }
-    }
+    };
 
-    bootstrap();
+    void checkAuth();
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      const user = session?.user ?? null;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const signedIn = !!session;
+      const needsAuth = requireAuth || mode === "admin";
 
-      if (!user) {
-        setSessionUser(null);
-        setProfile(null);
+      setIsAuthenticated(signedIn);
+
+      if (needsAuth && !session) {
+        router.push(`/auth/login?redirect=${encodeURIComponent(pathname)}`);
+        setIsAuthorized(false);
         return;
       }
 
-      const nextUser: SessionUser = {
-        id: user.id,
-        email: user.email ?? null,
-      };
-
-      setSessionUser(nextUser);
-
-      try {
-        const backendProfile = await getProfile(user.id);
-
-        setProfile({
-          ...backendProfile,
-          email: backendProfile.email || user.email || null,
-        });
-      } catch (error) {
-        console.warn("AccessGuard auth change fallback:", error);
-
-        setProfile({
-          id: user.id,
-          email: user.email ?? null,
-          display_name: "",
-          avatar_url: null,
-          role: "user",
-        });
+      if (mode !== "admin") {
+        setIsAuthorized(signedIn || !needsAuth);
       }
     });
 
     return () => {
-      isMounted = false;
+      active = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [router, pathname, requireAuth, mode]);
 
   if (isLoading) {
     return (
-      <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        <p className="text-sm text-slate-500">Checking access...</p>
-      </section>
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-slate-600">Loading...</p>
+        </div>
+      </div>
     );
   }
 
-  if (mode === "signed_in" && !sessionUser) {
-    return (
-      <section className="mx-auto max-w-4xl space-y-6">
-        <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-          <p className="text-sm font-semibold text-blue-600">Access Required</p>
-          <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900">
-            Sign in required
-          </h1>
-          <p className="mt-2 text-sm text-slate-600">
-            You need to sign in before accessing this page.
-          </p>
-        </div>
-
-        <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-          <div className="rounded-2xl bg-amber-50 px-4 py-4 text-sm text-amber-700">
-            Your current session does not have access to this page.
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-3">
-            <Link
-              href="/profile"
-              className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
-            >
-              Open Profile / Sign In
-            </Link>
-
-            <Link
-              href="/"
-              className="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
-            >
-              Back to Home
-            </Link>
-          </div>
-        </div>
-      </section>
-    );
+  if ((requireAuth || mode === "admin") && !isAuthenticated) {
+    return fallback ? <>{fallback}</> : null;
   }
 
-  if (mode === "admin") {
-    const isAdmin = Boolean(sessionUser && profile?.role === "admin");
-
-    if (!sessionUser || !isAdmin) {
-      return (
-        <section className="mx-auto max-w-4xl space-y-6">
-          <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-            <p className="text-sm font-semibold text-blue-600">Admin Access</p>
-            <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900">
-              Admin permission required
-            </h1>
-            <p className="mt-2 text-sm text-slate-600">
-              This page is only available for administrator accounts.
-            </p>
-          </div>
-
-          <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-            <div className="rounded-2xl bg-rose-50 px-4 py-4 text-sm text-rose-700">
-              You do not have permission to access the admin area.
-            </div>
-
-            <div className="mt-4 flex flex-wrap gap-3">
-              <Link
-                href="/profile"
-                className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
-              >
-                Open Profile
-              </Link>
-
-              <Link
-                href="/"
-                className="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
-              >
-                Back to Home
-              </Link>
-            </div>
-          </div>
-        </section>
-      );
-    }
+  if (mode === "admin" && !isAuthorized) {
+    return fallback ? <>{fallback}</> : null;
   }
 
   return <>{children}</>;
 }
+
+export default AccessGuard;
