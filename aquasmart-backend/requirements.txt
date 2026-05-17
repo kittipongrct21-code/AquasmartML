@@ -6,6 +6,5 @@ numpy
 tensorflow-cpu
 supabase
 python-dotenv
-
-supabase
 httpx
+slowapi

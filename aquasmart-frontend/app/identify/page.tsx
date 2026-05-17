@@ -1,5 +1,4 @@
 "use client";
-
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -29,23 +28,18 @@ const API_BASE_URL =
 export default function IdentifyPage() {
   const router = useRouter();
   const { locale, t } = useI18n();
-
   const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
   const [fishList, setFishList] = useState<FishListItem[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState("");
-
   const [prediction, setPrediction] = useState<PredictionResponse | null>(null);
   const [matchedFish, setMatchedFish] = useState<FishListItem | null>(null);
-
   const [isLoadingFish, setIsLoadingFish] = useState(true);
   const [isPredicting, setIsPredicting] = useState(false);
-
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     let isMounted = true;
-
     async function bootstrap() {
       try {
         setIsLoadingFish(true);
@@ -116,7 +110,6 @@ export default function IdentifyPage() {
 
   const displayName = useMemo(() => {
     if (!prediction) return "";
-
     if (prediction.predicted_class === "unknown_fish") {
       return t.identify.unknownFish;
     }
@@ -125,7 +118,6 @@ export default function IdentifyPage() {
       return t.identify.notAFish;
     }
 
-    // Try to find the matched fish to get the localized name
     const fish = findFishMatch(fishList, prediction.raw_predicted_class || prediction.predicted_class);
     if (fish) {
       return getLocalizedValue(fish, "name", locale) || fish.name;
@@ -136,7 +128,6 @@ export default function IdentifyPage() {
 
   const resultVariant = useMemo(() => {
     if (!prediction) return "empty";
-
     if (prediction.predicted_class === "unknown_fish") return "unknown";
     if (prediction.predicted_class === "not_a_fish") return "not_fish";
     return "known";
@@ -150,7 +141,6 @@ export default function IdentifyPage() {
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
-
     resetPredictionState();
 
     if (previewUrl) {
@@ -179,7 +169,6 @@ export default function IdentifyPage() {
   ): Promise<PredictionResponse> {
     const formData = new FormData();
     formData.append("file", file);
-
     if (userId) {
       formData.append("user_id", userId);
     }
@@ -215,7 +204,6 @@ export default function IdentifyPage() {
     label?: string | null
   ): FishListItem | null {
     if (!label) return null;
-
     const normalize = (value?: string | null) =>
       (value || "")
         .toLowerCase()
@@ -244,7 +232,6 @@ export default function IdentifyPage() {
       setErrorMessage("Please select an image first.");
       return;
     }
-
     try {
       setIsPredicting(true);
       setErrorMessage("");
@@ -275,7 +262,6 @@ export default function IdentifyPage() {
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);
     }
-
     setSelectedFile(null);
     setPreviewUrl("");
     setPrediction(null);
@@ -306,7 +292,6 @@ export default function IdentifyPage() {
                 {t.identify.subtitle}
               </p>
             </div>
-
             <div className="flex flex-wrap gap-3">
               <Link
                 href="/fish"
@@ -398,9 +383,7 @@ export default function IdentifyPage() {
                 <div className="mt-5 space-y-3">
                   <StatusRow
                     label={t.identify.catalogStatus}
-                    value={
-                      isLoadingFish ? t.common.loading : `${fishList.length}`
-                    }
+                    value={isLoadingFish ? t.common.loading : `${fishList.length}`}
                   />
                   <StatusRow
                     label={t.identify.sessionStatus}
@@ -537,18 +520,6 @@ export default function IdentifyPage() {
                     {getLocalizedValue(matchedFish, "short_description", locale) ||
                       "Basic information is available for this fish species."}
                   </p>
-
-                  <div className="mt-4 grid gap-4 md:grid-cols-3">
-                    <InfoCard label={t.identify.type} value={getLocalizedValue(matchedFish, "type", locale) || "-"} />
-                    <InfoCard
-                      label={t.identify.category}
-                      value={getLocalizedValue(matchedFish, "category", locale) || "-"}
-                    />
-                    <InfoCard
-                      label={t.identify.habitat}
-                      value={getLocalizedValue(matchedFish, "habitat", locale) || "-"}
-                    />
-                  </div>
 
                   {getLocalizedValue(matchedFish, "identify_text", locale) ? (
                     <div className="mt-4 rounded-2xl bg-white px-4 py-4 shadow-sm ring-1 ring-slate-200">

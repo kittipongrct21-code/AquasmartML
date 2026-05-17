@@ -1,8 +1,6 @@
 "use client";
-
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { getPredictionHistory, deleteHistory, type HistoryItem } from "@/lib/api";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/lib/i18n-context";
@@ -11,24 +9,20 @@ import { supabase } from "@/lib/supabase-client";
 export default function HistoryPage() {
   const { showError, showSuccess } = useToast();
   const { t: dict } = useI18n();
-
   const [sessionUser, setSessionUser] = useState<{ id: string } | null>(null);
-  const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
-  
+  const [allHistoryItems, setAllHistoryItems] = useState<HistoryItem[]>([]);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
+  // ตรวจสอบสถานะผู้ใช้
   useEffect(() => {
     let isMounted = true;
-
     async function checkSession() {
       try {
         setIsCheckingSession(true);
         const { data: { session } } = await supabase.auth.getSession();
-        
         if (!isMounted) return;
-
         if (session?.user) {
           setSessionUser({ id: session.user.id });
         } else {
@@ -37,20 +31,14 @@ export default function HistoryPage() {
       } catch (error) {
         console.error("Failed to check session:", error);
       } finally {
-        if (isMounted) {
-          setIsCheckingSession(false);
-        }
+        if (isMounted) setIsCheckingSession(false);
       }
     }
 
     checkSession();
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setSessionUser({ id: session.user.id });
-      } else {
-        setSessionUser(null);
-      }
+      if (session?.user) setSessionUser({ id: session.user.id });
+      else setSessionUser(null);
     });
 
     return () => {
@@ -59,47 +47,59 @@ export default function HistoryPage() {
     };
   }, []);
 
+  // โหลดข้อมูลประวัติทั้งหมด
   useEffect(() => {
     let isMounted = true;
-
     async function loadHistory() {
       if (!sessionUser?.id) return;
-
       try {
         setIsLoading(true);
         const items = await getPredictionHistory(sessionUser.id);
-        
-        if (isMounted) {
-          setHistoryItems(items);
-        }
+        if (isMounted) setAllHistoryItems(items);
       } catch (error) {
         console.error("Failed to load history:", error);
-        if (isMounted) {
-          showError("Failed to load history.");
-        }
+        if (isMounted) showError("Failed to load history.");
       } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+        if (isMounted) setIsLoading(false);
       }
     }
-
     loadHistory();
-
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, [sessionUser?.id, showError]);
 
-  async function handleDelete(id: number) {
-    if (!confirm("Are you sure you want to delete this history record?")) {
-      return;
-    }
+  // --- ฟีเจอร์ใหม่: กรองปลาที่ไม่ซ้ำ (Unique Fish) ---
+  const uniqueHistoryItems = useMemo(() => {
+    const seen = new Map<string, HistoryItem>();
 
+    allHistoryItems.forEach((item) => {
+      // ใช้ชื่อปลาที่จับคู่ได้ หรือชื่อ Class จาก AI เป็น Key
+      const uniqueKey = (item.fish_name || item.predicted_class || "unknown").toLowerCase();
+      
+      // ถ้ายังไม่มี Key นี้ หรือเจอรายการที่ใหม่กว่า ให้ใส่ลงใน Map
+      const existing = seen.get(uniqueKey);
+      const currentItemDate = item.created_at ? new Date(item.created_at).getTime() : 0;
+      const existingItemDate = existing?.created_at ? new Date(existing.created_at).getTime() : 0;
+
+      if (!existing || currentItemDate > existingItemDate) {
+        seen.set(uniqueKey, item);
+      }
+    });
+
+    // แปลง Map กลับเป็น Array และเรียงตามวันที่ล่าสุด
+    return Array.from(seen.values()).sort((a, b) => {
+      const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return dateB - dateA;
+    });
+  }, [allHistoryItems]);
+
+  async function handleDelete(id: number) {
+    if (!confirm("Are you sure you want to delete this history record?")) return;
     try {
       setDeletingId(id);
       await deleteHistory(id);
-      setHistoryItems((prev) => prev.filter((item) => item.id !== id));
+      // ลบออกจาก state ทั้งแบบ Unique และ All เพื่อความแม่นยำ
+      setAllHistoryItems((prev) => prev.filter((item) => item.id !== id));
       showSuccess("History deleted successfully");
     } catch (error) {
       console.error("Failed to delete history:", error);
@@ -134,24 +134,15 @@ export default function HistoryPage() {
         <section className="mx-auto max-w-5xl space-y-6">
           <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
             <p className="text-sm font-semibold text-blue-600">{dict.nav.history}</p>
-            <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900">
-              {dict.history.title}
-            </h1>
-            <p className="mt-2 text-sm text-slate-600">
-              {dict.history.desc}
-            </p>
+            <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900">{dict.history.title}</h1>
+            <p className="mt-2 text-sm text-slate-600">{dict.history.desc}</p>
           </section>
-
           <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
             <div className="rounded-2xl bg-amber-50 px-4 py-4 text-sm text-amber-700">
               {dict.history.notSignedInWarning}
             </div>
-
             <div className="mt-5 flex gap-3">
-              <Link
-                href="/auth/login"
-                className="rounded-2xl bg-blue-600 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-blue-700"
-              >
+              <Link href="/auth/login" className="rounded-2xl bg-blue-600 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-blue-700">
                 {dict.history.signInToView}
               </Link>
             </div>
@@ -168,34 +159,23 @@ export default function HistoryPage() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <p className="text-sm font-semibold text-blue-600">{dict.nav.history}</p>
-              <h1 className="mt-2 text-4xl font-extrabold tracking-tight text-slate-900">
-                {dict.history.title}
-              </h1>
-              <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
-                {dict.history.desc}
-              </p>
+              <h1 className="mt-2 text-4xl font-extrabold tracking-tight text-slate-900">{dict.history.title}</h1>
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">{dict.history.desc}</p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
-              <Link
-                href="/profile"
-                className="rounded-2xl bg-slate-100 px-4 py-3 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
-              >
+              <Link href="/profile" className="rounded-2xl bg-slate-100 px-4 py-3 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-200">
                 {dict.history.backToProfile}
               </Link>
-              <Link
-                href="/identify"
-                className="rounded-2xl bg-blue-600 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-blue-700"
-              >
+              <Link href="/identify" className="rounded-2xl bg-blue-600 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-blue-700">
                 {dict.history.identifyMore}
               </Link>
             </div>
           </div>
-          
           <div className="mt-6 flex items-center gap-2 text-sm font-medium text-slate-600">
             <span className="flex h-6 items-center rounded-full bg-blue-50 px-2.5 text-blue-700">
-              {historyItems.length}
+              {uniqueHistoryItems.length}
             </span>
-            {dict.history.records}
+            {dict.history.records} (แสดงเฉพาะชนิดล่าสุด)
           </div>
         </section>
 
@@ -203,7 +183,7 @@ export default function HistoryPage() {
           <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
             <p className="text-sm text-slate-500">{dict.history.loading}</p>
           </section>
-        ) : historyItems.length === 0 ? (
+        ) : uniqueHistoryItems.length === 0 ? (
           <section className="rounded-3xl bg-white p-12 text-center shadow-sm ring-1 ring-slate-200">
             <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-slate-100">
               <svg className="h-10 w-10 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -213,25 +193,18 @@ export default function HistoryPage() {
             <h3 className="mt-4 text-lg font-bold text-slate-900">{dict.history.noHistoryTitle}</h3>
             <p className="mt-2 text-sm text-slate-500">{dict.history.noHistoryDesc}</p>
             <div className="mt-6">
-              <Link
-                href="/identify"
-                className="inline-flex rounded-2xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
-              >
+              <Link href="/identify" className="inline-flex rounded-2xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-700">
                 {dict.history.goIdentify}
               </Link>
             </div>
           </section>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {historyItems.map((item) => (
+            {uniqueHistoryItems.map((item) => (
               <div key={item.id} className="group relative flex flex-col overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200 transition-all hover:shadow-md hover:ring-slate-300">
                 <div className="relative aspect-[4/3] w-full bg-slate-100">
                   {item.uploaded_image_url || item.image_url ? (
-                    <img
-                      src={item.uploaded_image_url || item.image_url || ""}
-                      alt={item.predicted_class}
-                      className="absolute inset-0 h-full w-full object-cover"
-                    />
+                    <img src={item.uploaded_image_url || item.image_url || ""} alt={item.predicted_class} className="absolute inset-0 h-full w-full object-cover" />
                   ) : (
                     <div className="flex h-full items-center justify-center text-slate-400">
                       <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -239,7 +212,6 @@ export default function HistoryPage() {
                       </svg>
                     </div>
                   )}
-                  
                   {item.confidence_percent !== null && item.confidence_percent !== undefined && (
                     <div className="absolute left-3 top-3 rounded-full bg-black/60 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm">
                       {Math.round(item.confidence_percent)}% {dict.history.confidence}
@@ -248,14 +220,8 @@ export default function HistoryPage() {
                 </div>
                 
                 <div className="flex flex-1 flex-col p-5">
-                  <div className="mb-2 text-xs font-medium text-slate-500">
-                    {formatDate(item.created_at)}
-                  </div>
-                  
-                  <h3 className="mb-1 text-lg font-bold text-slate-900 line-clamp-1">
-                    {item.predicted_class}
-                  </h3>
-                  
+                  <div className="mb-2 text-xs font-medium text-slate-500">{formatDate(item.created_at)}</div>
+                  <h3 className="mb-1 text-lg font-bold text-slate-900 line-clamp-1">{item.predicted_class}</h3>
                   {item.fish_name && (
                     <div className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-blue-600">
                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -264,21 +230,14 @@ export default function HistoryPage() {
                       {dict.history.match}: {item.fish_name}
                     </div>
                   )}
-                  
                   <div className="mt-auto flex items-center justify-between pt-4">
                     {item.fish_id ? (
-                      <Link
-                        href={`/fish/${item.fish_id}`}
-                        className="text-sm font-semibold text-blue-600 hover:text-blue-700"
-                      >
+                      <Link href={`/fish/${item.fish_id}`} className="text-sm font-semibold text-blue-600 hover:text-blue-700">
                         {dict.catalog.openDetails} &rarr;
                       </Link>
                     ) : (
-                      <span className="text-sm text-slate-400">
-                        {dict.history.unknownType}
-                      </span>
+                      <span className="text-sm text-slate-400">{dict.history.unknownType}</span>
                     )}
-                    
                     <button
                       type="button"
                       onClick={() => handleDelete(item.id)}

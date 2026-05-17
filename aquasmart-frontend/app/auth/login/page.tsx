@@ -1,5 +1,4 @@
 "use client";
-
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -7,107 +6,81 @@ import { getProfile } from "@/lib/api";
 import { supabase } from "@/lib/supabase-client";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/lib/i18n-context";
+import ValidationModal from "@/components/common/ValidationModal";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { showError, showSuccess, showWarning } = useToast();
+  const { showSuccess } = useToast(); // เก็บไว้แค่ Success
   const { t: dict } = useI18n();
-
+  
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // State สำหรับ Popup Error
+  const [errorModal, setErrorModal] = useState({ open: false, title: "", message: "" });
 
   useEffect(() => {
     let isMounted = true;
-
     async function bootstrap() {
       try {
         setIsCheckingSession(true);
-
         const sessionData = await supabase.auth.getSession();
         const user = sessionData.data.session?.user ?? null;
-
         if (!isMounted) return;
-
         if (user) {
           try {
             const profile = await getProfile(user.id);
-
             if (!isMounted) return;
-
-            if (profile?.role === "admin") {
-              router.replace("/admin/fish");
-              return;
-            }
-          } catch (error) {
-            console.warn("Login page profile redirect fallback:", error);
-          }
-
+            if (profile?.role === "admin") { router.replace("/admin/fish"); return; }
+          } catch { /* fallback */ }
           router.replace("/profile");
         }
-      } catch (error) {
-        console.error("Failed to check session:", error);
-      } finally {
-        if (isMounted) {
-          setIsCheckingSession(false);
-        }
+      } catch { /* ignore */ } finally {
+        if (isMounted) setIsCheckingSession(false);
       }
     }
-
     bootstrap();
-
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, [router]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setErrorModal({ open: false, title: "", message: "" });
 
     if (!email.trim() || !password) {
-      showWarning("Please enter both email and password.");
+      setErrorModal({ open: true, title: "ข้อมูลไม่ครบถ้วน", message: "กรุณากรอกอีเมลและรหัสผ่านให้ครบถ้วน" });
       return;
     }
 
     try {
       setIsSubmitting(true);
-
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
+      if (!data.user) throw new Error("Login succeeded but user session was not returned.");
 
-      const user = data.user;
-
-      if (!user) {
-        throw new Error("Login succeeded but user session was not returned.");
-      }
-
-      showSuccess("Signed in successfully.");
+      showSuccess("เข้าสู่ระบบสำเร็จ กำลังพาคุณไปยังหน้าโปรไฟล์...");
 
       try {
-        const profile = await getProfile(user.id);
-
-        if (profile?.role === "admin") {
-          router.push("/admin/fish");
-          router.refresh();
-          return;
-        }
-      } catch (error) {
-        console.warn("Login role lookup fallback:", error);
-      }
-
+        const profile = await getProfile(data.user.id);
+        if (profile?.role === "admin") { router.push("/admin/fish"); router.refresh(); return; }
+      } catch { /* fallback */ }
+      
       router.push("/profile");
       router.refresh();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to sign in:", error);
-      showError(error instanceof Error ? error.message : "Failed to sign in.");
+      // แยกข้อความ Error ให้ชัดเจน
+      const msg = error?.message?.includes("Invalid login") || error?.message?.includes("Incorrect password")
+        ? "อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง"
+        : "เกิดข้อผิดพลาดในการเชื่อมต่อระบบ กรุณาลองใหม่อีกครั้ง";
+      
+      setErrorModal({ open: true, title: "เข้าสู่ระบบไม่สำเร็จ", message: msg });
     } finally {
       setIsSubmitting(false);
     }
@@ -125,86 +98,43 @@ export default function LoginPage() {
 
   return (
     <main className="min-h-screen px-4 py-8">
+      <ValidationModal 
+        isOpen={errorModal.open} 
+        title={errorModal.title} 
+        message={errorModal.message} 
+        onClose={() => setErrorModal({ ...errorModal, open: false })} 
+      />
+      
       <section className="mx-auto max-w-md space-y-6">
         <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
           <p className="text-sm font-semibold text-blue-600">Auth</p>
-          <h1 className="mt-2 text-4xl font-extrabold tracking-tight text-slate-900">
-            {dict.auth.loginTitle}
-          </h1>
-          <p className="mt-3 text-sm leading-7 text-slate-600">
-            {dict.auth.loginDesc}
-          </p>
+          <h1 className="mt-2 text-4xl font-extrabold tracking-tight text-slate-900">{dict.auth.loginTitle}</h1>
+          <p className="mt-3 text-sm leading-7 text-slate-600">{dict.auth.loginDesc}</p>
         </section>
 
         <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label
-                htmlFor="email"
-                className="mb-2 block text-sm font-semibold text-slate-700"
-              >
-                {dict.auth.emailLabel}
-              </label>
-              <input
-                id="email"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder={dict.auth.emailPlaceholder}
-                className="block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-              />
+              <label htmlFor="email" className="mb-2 block text-sm font-semibold text-slate-700">{dict.auth.emailLabel}</label>
+              <input id="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={dict.auth.emailPlaceholder} className="block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100" />
             </div>
-
             <div>
-              <label
-                htmlFor="password"
-                className="mb-2 block text-sm font-semibold text-slate-700"
-              >
-                {dict.auth.passwordLabel}
-              </label>
-              <input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder={dict.auth.passwordPlaceholder}
-                className="block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-              />
+              <label htmlFor="password" className="mb-2 block text-sm font-semibold text-slate-700">{dict.auth.passwordLabel}</label>
+              <input id="password" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={dict.auth.passwordPlaceholder} className="block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100" />
             </div>
-
             <div className="flex flex-wrap gap-3">
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-              >
+              <button type="submit" disabled={isSubmitting} className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300">
                 {isSubmitting ? dict.auth.signingIn : dict.auth.submitLogin}
               </button>
-
-              <Link
-                href="/"
-                className="rounded-2xl bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
-              >
-                {dict.auth.backToHome}
-              </Link>
+              <Link href="/" className="rounded-2xl bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200">{dict.auth.backToHome}</Link>
             </div>
           </form>
         </section>
 
         <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-          <p className="text-sm text-slate-600">
-            {dict.auth.noAccount}
-          </p>
-
+          <p className="text-sm text-slate-600">{dict.auth.noAccount}</p>
           <div className="mt-4">
-            <Link
-              href="/auth/signup"
-              className="inline-flex rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
-            >
-              {dict.auth.submitSignup}
-            </Link>
+            <Link href="/auth/signup" className="inline-flex rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200">{dict.auth.submitSignup}</Link>
           </div>
         </section>
       </section>

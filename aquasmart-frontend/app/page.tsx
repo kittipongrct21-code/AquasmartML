@@ -1,359 +1,108 @@
 "use client";
-
-import { useEffect, useMemo, useState } from "react";
+import { Camera, Search, Home } from "lucide-react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { getPublicFishList, type FishListItem } from "@/lib/api";
-import { useI18n, getLocalizedValue } from "@/lib/i18n-context";
+import { useI18n } from "@/lib/i18n-context";
 
 export default function HomePage() {
-  const { locale, t: dict } = useI18n();
-  const [fishList, setFishList] = useState<FishListItem[]>([]);
+  const [topFish, setTopFish] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState("");
+  const { t } = useI18n();
 
   useEffect(() => {
-    let isMounted = true;
-
-    async function loadFeaturedFish() {
-      try {
-        setIsLoading(true);
-        setErrorMessage("");
-
-        const data = await getPublicFishList();
-
-        if (!isMounted) return;
-        setFishList(data || []);
-      } catch (error) {
-        console.error("Failed to load featured fish:", error);
-        if (!isMounted) return;
-
-        setErrorMessage(
-          error instanceof Error
-            ? error.message
-            : "Failed to load featured fish."
-        );
-        setFishList([]);
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    loadFeaturedFish();
-
-    return () => {
-      isMounted = false;
-    };
+    fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000"}/fish/top-searched`)
+      .then((res) => res.json())
+      .then((data) => {
+        setTopFish(data);
+        setIsLoading(false);
+      })
+      .catch(() => setIsLoading(false));
   }, []);
 
-  const featuredFish = useMemo(() => {
-    return fishList.slice(0, 4);
-  }, [fishList]);
-
   return (
-    <main className="min-h-screen px-4 py-8">
-      <section className="mx-auto max-w-6xl space-y-6">
-        <section className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
-          <div className="grid gap-0 lg:grid-cols-[1.15fr_0.85fr]">
-            <div className="p-6 sm:p-8">
-              <p className="text-sm font-semibold text-blue-600">AquaSmart ML</p>
+    <div className="space-y-10 sm:space-y-14">
+      {/* Hero Section */}
+      <section className="text-center space-y-5 py-6">
+        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 tracking-tight">
+          {t.landing.heroTitle}
+        </h1>
+        <p className="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed">
+          {t.landing.heroDesc}
+        </p>
 
-              <h1 className="mt-3 text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">
-                {dict.landing.heroTitle}
-              </h1>
-
-              <p className="mt-4 max-w-2xl text-base leading-8 text-slate-600">
-                {dict.landing.heroDesc}
-              </p>
-
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Link
-                  href="/identify"
-                  className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
-                >
-                  {dict.landing.identifyFish}
-                </Link>
-
-                <Link
-                  href="/fish"
-                  className="rounded-2xl bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
-                >
-                  {dict.landing.browseCatalog}
-                </Link>
-              </div>
-
-              <div className="mt-8 grid gap-4 sm:grid-cols-3">
-                <QuickStat
-                  label={dict.landing.catalogStat}
-                  value={`${fishList.length}`}
-                  helper={dict.landing.catalogStatHelper}
-                />
-                <QuickStat
-                  label={dict.landing.aiStat}
-                  value={dict.landing.aiStatValue}
-                  helper={dict.landing.aiStatHelper}
-                />
-                <QuickStat
-                  label={dict.landing.historyStat}
-                  value={dict.landing.historyStatValue}
-                  helper={dict.landing.historyStatHelper}
-                />
-              </div>
+        {/* Quick Actions */}
+        <div className="grid grid-cols-2 gap-4 max-w-md mx-auto mt-8">
+          <Link
+            href="/identify"
+            className="group flex flex-col items-center justify-center p-6 bg-white rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-blue-200 transition-all"
+          >
+            <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition">
+              <Camera className="w-6 h-6" />
             </div>
+            <span className="font-semibold text-slate-800">{t.landing.qaIdentifyTitle}</span>
+            <span className="text-xs text-slate-500 mt-1">{t.landing.qaIdentifyDesc}</span>
+          </Link>
 
-            <div className="bg-slate-50 p-6 sm:p-8">
-              <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-                <h2 className="text-xl font-bold text-slate-900">
-                  {dict.landing.quickActions}
-                </h2>
-
-                <div className="mt-5 space-y-3">
-                  <QuickActionCard
-                    href="/identify"
-                    title={dict.landing.qaIdentifyTitle}
-                    description={dict.landing.qaIdentifyDesc}
-                    primary
-                  />
-
-                  <QuickActionCard
-                    href="/fish"
-                    title={dict.landing.qaBrowseTitle}
-                    description={dict.landing.qaBrowseDesc}
-                  />
-
-                  <QuickActionCard
-                    href="/history"
-                    title={dict.landing.qaHistoryTitle}
-                    description={dict.landing.qaHistoryDesc}
-                  />
-                </div>
-              </div>
+          <Link
+            href="/fish"
+            className="group flex flex-col items-center justify-center p-6 bg-white rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-emerald-200 transition-all"
+          >
+            <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition">
+              <Search className="w-6 h-6" />
             </div>
-          </div>
-        </section>
-
-        <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-          <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">
-                  {dict.landing.featuredFish}
-                </h2>
-                <p className="mt-1 text-sm text-slate-600">
-                  {dict.landing.featuredFishDesc}
-                </p>
-              </div>
-
-              <Link
-                href="/fish"
-                className="text-sm font-semibold text-blue-600 transition hover:text-blue-700"
-              >
-                {dict.landing.viewAll}
-              </Link>
-            </div>
-
-            {isLoading ? (
-              <div className="mt-5 rounded-2xl bg-slate-50 px-4 py-4 text-sm text-slate-600">
-                {dict.landing.loadingFish}
-              </div>
-            ) : null}
-
-            {!isLoading && errorMessage ? (
-              <div className="mt-5 rounded-2xl bg-rose-50 px-4 py-4 text-sm text-rose-700">
-                {errorMessage}
-              </div>
-            ) : null}
-
-            {!isLoading && !errorMessage && featuredFish.length === 0 ? (
-              <div className="mt-5 rounded-2xl bg-slate-50 px-4 py-4 text-sm text-slate-600">
-                {dict.landing.noFishData}
-              </div>
-            ) : null}
-
-            {!isLoading && featuredFish.length > 0 ? (
-              <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                {featuredFish.map((fish) => (
-                  <HomeFishCard key={fish.id} fish={fish} />
-                ))}
-              </div>
-            ) : null}
-          </section>
-
-          <section className="space-y-6">
-            <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-              <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">
-                {dict.landing.howItWorks}
-              </h2>
-
-              <div className="mt-5 space-y-4">
-                <StepCard
-                  step="01"
-                  title={dict.landing.step1Title}
-                  description={dict.landing.step1Desc}
-                />
-                <StepCard
-                  step="02"
-                  title={dict.landing.step2Title}
-                  description={dict.landing.step2Desc}
-                />
-                <StepCard
-                  step="03"
-                  title={dict.landing.step3Title}
-                  description={dict.landing.step3Desc}
-                />
-              </div>
-            </div>
-
-            <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-              <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">
-                {dict.landing.startNow}
-              </h2>
-
-              <p className="mt-3 text-sm leading-7 text-slate-600">
-                {dict.landing.startNowDesc}
-              </p>
-
-              <div className="mt-5 flex flex-wrap gap-3">
-                <Link
-                  href="/identify"
-                  className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
-                >
-                  {dict.landing.openIdentify}
-                </Link>
-
-                <Link
-                  href="/fish"
-                  className="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
-                >
-                  {dict.landing.openCatalog}
-                </Link>
-              </div>
-            </div>
-          </section>
+            <span className="font-semibold text-slate-800">{t.landing.qaBrowseTitle}</span>
+            <span className="text-xs text-slate-500 mt-1">{t.landing.qaBrowseDesc}</span>
+          </Link>
         </div>
       </section>
-    </main>
-  );
-}
 
-function QuickStat({
-  label,
-  value,
-  helper,
-}: {
-  label: string;
-  value: string;
-  helper: string;
-}) {
-  return (
-    <div className="rounded-2xl bg-slate-50 px-4 py-4">
-      <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-        {label}
-      </p>
-      <p className="mt-2 text-2xl font-extrabold tracking-tight text-slate-900">
-        {value}
-      </p>
-      <p className="mt-1 text-xs text-slate-500">{helper}</p>
-    </div>
-  );
-}
-
-function QuickActionCard({
-  href,
-  title,
-  description,
-  primary = false,
-}: {
-  href: string;
-  title: string;
-  description: string;
-  primary?: boolean;
-}) {
-  return (
-    <Link
-      href={href}
-      className={
-        primary
-          ? "block rounded-2xl bg-blue-600 px-4 py-4 text-white transition hover:bg-blue-700"
-          : "block rounded-2xl bg-slate-50 px-4 py-4 text-slate-700 transition hover:bg-slate-100"
-      }
-    >
-      <p className="text-base font-bold">{title}</p>
-      <p className={primary ? "mt-1 text-sm text-blue-100" : "mt-1 text-sm text-slate-500"}>
-        {description}
-      </p>
-    </Link>
-  );
-}
-
-function StepCard({
-  step,
-  title,
-  description,
-}: {
-  step: string;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="rounded-2xl bg-slate-50 px-4 py-4">
-      <div className="flex items-start gap-4">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-sm font-bold text-blue-700">
-          {step}
+      {/* Top Searched Fish */}
+      <section className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900">{t.landing.featuredFish}</h2>
+            <p className="text-sm text-slate-500 mt-1">{t.landing.featuredFishDesc}</p>
+          </div>
+          <Link href="/fish" className="text-sm font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1">
+            {t.landing.viewAll} →
+          </Link>
         </div>
 
-        <div>
-          <p className="text-base font-bold text-slate-900">{title}</p>
-          <p className="mt-1 text-sm leading-7 text-slate-600">{description}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function HomeFishCard({ fish }: { fish: FishListItem }) {
-  const { locale } = useI18n();
-  
-  return (
-    <Link
-      href={`/fish/${fish.id}`}
-      className="group overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-md"
-    >
-      <div className="flex h-44 items-center justify-center overflow-hidden bg-slate-50">
-        {fish.cover_image_url ? (
-          <img
-            src={fish.cover_image_url}
-            alt={getLocalizedValue(fish, "name", locale) || fish.name}
-            className="h-full w-full object-cover"
-          />
+        {isLoading ? (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-48 bg-slate-200 rounded-2xl animate-pulse" />
+            ))}
+          </div>
+        ) : topFish.length > 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+            {topFish.map((fish: any) => (
+              <Link
+                href={`/fish/${fish.id}`}
+                key={fish.id}
+                className="group bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-200 hover:shadow-md hover:-translate-y-1 transition-all"
+              >
+                <div className="aspect-[4/3] overflow-hidden bg-slate-100">
+                  <img
+                    src={fish.cover_image_url || "/placeholder.jpg"}
+                    alt={fish.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                </div>
+                <div className="p-4">
+                  <h3 className="font-bold text-slate-900 truncate">{fish.name}</h3>
+                  <p className="text-xs text-slate-500 mt-1">{fish.search_count || 0} searches</p>
+                </div>
+              </Link>
+            ))}
+          </div>
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-slate-100">
-            <span className="text-base font-bold text-slate-400">AS</span>
+          <div className="bg-white rounded-2xl p-8 text-center border border-slate-200">
+            <Home className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+            <p className="text-slate-500">{t.landing.noFishData}</p>
           </div>
         )}
-      </div>
-
-      <div className="p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h3 className="text-lg font-extrabold tracking-tight text-slate-900 transition group-hover:text-blue-700">
-              {getLocalizedValue(fish, "name", locale) || fish.name}
-            </h3>
-            <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
-              {getLocalizedValue(fish, "category", locale) || "Fish"}
-            </p>
-          </div>
-
-          <span className="rounded-full bg-blue-50 px-3 py-1 text-[11px] font-semibold text-blue-700">
-            {getLocalizedValue(fish, "type", locale) || "Unknown"}
-          </span>
-        </div>
-
-        <p className="mt-3 line-clamp-3 text-sm leading-7 text-slate-600">
-          {getLocalizedValue(fish, "short_description", locale) || "No description available."}
-        </p>
-      </div>
-    </Link>
+      </section>
+    </div>
   );
 }
