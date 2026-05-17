@@ -5,10 +5,6 @@ import { useI18n } from "@/lib/i18n-context";
 export function LanguageToggle() {
   const { locale, setLocale } = useI18n();
 
-  const toggleLanguage = () => {
-    setLocale(locale === "en" ? "th" : "en");
-  };
-
   return (
     <div className="flex h-10 items-center justify-center rounded-full bg-slate-100 p-1 ring-1 ring-slate-200">
       <button
