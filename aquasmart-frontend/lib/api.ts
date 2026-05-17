@@ -16,7 +16,9 @@ export type FishListItem = {
   habitat?: string | null;
   identify_text?: string | null;
   average_lifespan?: string | null;
+  average_lifespan_th?: string | null; // ✅ เพิ่มรองรับภาษาไทย
   adult_size?: string | null;
+  adult_size_th?: string | null; // ✅ เพิ่มรองรับภาษาไทย
   cover_image_url?: string | null;
   is_active?: boolean;
   origin?: string | null;
@@ -54,7 +56,9 @@ export type FishGeneralPayload = {
   habitat?: string | null;
   identify_text?: string | null;
   average_lifespan?: string | null;
+  average_lifespan_th?: string | null; // ✅ เพิ่มรองรับภาษาไทย
   adult_size?: string | null;
+  adult_size_th?: string | null; // ✅ เพิ่มรองรับภาษาไทย
   cover_image_url?: string | null;
   is_active?: boolean;
   origin?: string | null;
@@ -253,7 +257,7 @@ export type FavoritePayload = {
 };
 
 /* =========================================================
-   Internal helpers (Fixed and Enhanced)
+   Internal helpers
 ========================================================= */
 
 async function parseError(response: Response, fallback: string): Promise<never> {
@@ -294,7 +298,6 @@ async function requestJson<T>(
     headers.set("Authorization", `Bearer ${session.access_token}`);
   }
   
-  // 🚨 FIXED: ถ้า body เป็นอินสแตนซ์ของ FormData ห้ามบังคับใส่แอปพลิเคชัน JSON เด็ดขาด
   if (!headers.has("Content-Type") && init?.body) {
     if (!(init.body instanceof FormData)) {
       headers.set("Content-Type", "application/json");

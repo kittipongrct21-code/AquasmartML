@@ -35,7 +35,9 @@ const EMPTY_GENERAL: FishGeneralPayload = {
   identify_text: "",
   identify_text_th: "",
   average_lifespan: "",
+  average_lifespan_th: "",
   adult_size: "",
+  adult_size_th: "",
   cover_image_url: "",
   is_active: true,
   origin: "",
@@ -147,7 +149,9 @@ const GENERAL_FIELDS: Array<{
   { key: "identify_text", label: "Identify Text", textarea: true },
   { key: "identify_text_th", label: "Identify Text (Thai)", textarea: true },
   { key: "average_lifespan", label: "Average Lifespan" },
+  { key: "average_lifespan_th", label: "Average Lifespan (Thai)" },
   { key: "adult_size", label: "Adult Size" },
+  { key: "adult_size_th", label: "Adult Size (Thai)" },
   { key: "origin", label: "Origin" },
   { key: "origin_th", label: "Origin (Thai)" },
   { key: "cover_image_url", label: "Cover Image URL", textarea: true },
@@ -253,6 +257,7 @@ export default function AdminFishEditPage() {
   const { showError, showSuccess, showWarning } = useToast();
 
   const fishId = Array.isArray(params?.id) ? params.id[0] : params?.id;
+  const missingFishId = !fishId;
 
   const [tab, setTab] = useState<EditTab>("general");
 
@@ -277,11 +282,7 @@ export default function AdminFishEditPage() {
   }, [general.name]);
 
   useEffect(() => {
-    if (!fishId) {
-      setPageError("Fish ID is missing.");
-      setIsLoading(false);
-      return;
-    }
+    if (!fishId) return;
 
     let isMounted = true;
 
@@ -537,7 +538,7 @@ export default function AdminFishEditPage() {
     }
   }
 
-  if (isLoading) {
+  if (isLoading && !missingFishId) {
     return (
       <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
         <p className="text-sm text-slate-500">Loading fish edit page...</p>
@@ -545,7 +546,7 @@ export default function AdminFishEditPage() {
     );
   }
 
-  if (pageError) {
+  if (missingFishId || pageError) {
     return (
       <section className="space-y-6">
         <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
@@ -568,7 +569,7 @@ export default function AdminFishEditPage() {
 
         <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
           <div className="rounded-2xl bg-rose-50 px-4 py-4 text-sm text-rose-700">
-            {pageError}
+            {missingFishId ? "Fish ID is missing." : pageError}
           </div>
         </div>
       </section>

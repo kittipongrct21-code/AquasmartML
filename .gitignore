@@ -18,6 +18,8 @@ node_modules/
 .next/
 **/.next/
 out/
+*.tsbuildinfo
+**/*.tsbuildinfo
 
 # Frontend env
 .env.local

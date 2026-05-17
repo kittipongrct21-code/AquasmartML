@@ -28,7 +28,9 @@ const EMPTY_GENERAL: FishGeneralPayload = {
   identify_text: "",
   identify_text_th: "",
   average_lifespan: "",
+  average_lifespan_th: "", // ✅ เพิ่มฟิลด์รองรับภาษาไทย
   adult_size: "",
+  adult_size_th: "", // ✅ เพิ่มฟิลด์รองรับภาษาไทย
   cover_image_url: "",
   is_active: true,
   origin: "",
@@ -140,7 +142,9 @@ const GENERAL_FIELDS: Array<{
   { key: "identify_text", label: "Identify Text", textarea: true },
   { key: "identify_text_th", label: "Identify Text (Thai)", textarea: true },
   { key: "average_lifespan", label: "Average Lifespan" },
+  { key: "average_lifespan_th", label: "Average Lifespan (Thai)" }, // ✅ เพิ่มให้แสดงช่องกรอกบน UI
   { key: "adult_size", label: "Adult Size" },
+  { key: "adult_size_th", label: "Adult Size (Thai)" }, // ✅ เพิ่มให้แสดงช่องกรอกบน UI
   { key: "origin", label: "Origin" },
   { key: "origin_th", label: "Origin (Thai)" },
   { key: "cover_image_url", label: "Cover Image URL", textarea: true },
