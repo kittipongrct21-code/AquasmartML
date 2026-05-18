@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Users, Key, Search, ShieldCheck, Mail, Calendar, X, Eye, EyeOff } from "lucide-react";
+import { Key, Search, ShieldCheck, Mail, Calendar, X, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/components/providers/ToastProvider";
 
 // Mock รายชื่อผู้ใช้งานในระบบสำหรับทดสอบฟังก์ชันจัดการรหัสผ่าน
@@ -13,9 +13,9 @@ const MOCK_USERS = [
 ];
 
 export default function AdminUsersPage() {
-  const { showSuccess, showWarning, showError } = useToast();
+  const { showSuccess, showWarning } = useToast();
   
-  const [users, setUsers] = useState(MOCK_USERS);
+  const [users] = useState(MOCK_USERS);
   const [searchTerm, setSearchTerm] = useState("");
   
   // States คุม Popup โมดอลแก้ไขรหัสผ่าน

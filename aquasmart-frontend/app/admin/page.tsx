@@ -1,8 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import Link from "next/link";
-import { BarChart3, Fish, Eye, Users, ShieldAlert, Award } from "lucide-react";
+import { BarChart3, Fish, Eye, Users, Award } from "lucide-react";
 
 // Mock ข้อมูลอันดับปลาที่คนเข้าดูมากที่สุด Top 5 ตามสั่ง
 const MOCK_TOP_FISH = [

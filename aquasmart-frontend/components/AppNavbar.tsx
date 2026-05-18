@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase-client";
 import { getProfile, type Profile } from "@/lib/api";
-import { useI18n, getLocalizedValue } from "@/lib/i18n-context";
+import { useI18n } from "@/lib/i18n-context";
 import { useToast } from "@/components/providers/ToastProvider";
 import { LogOut, User, LayoutDashboard } from "lucide-react";
 
@@ -122,7 +122,7 @@ export default function AppNavbar() {
                 pathname.startsWith("/fish") ? "bg-blue-50 text-blue-600" : "text-slate-600 hover:bg-slate-50"
               }`}
             >
-              {dict.nav.browseFish || "Catalog"}
+              {dict.nav.catalog || "Catalog"}
             </Link>
             <Link
               href="/identify"
@@ -130,7 +130,7 @@ export default function AppNavbar() {
                 pathname === "/identify" ? "bg-blue-50 text-blue-600" : "text-slate-600 hover:bg-slate-50"
               }`}
             >
-              {dict.nav.profile ? "AI Identify" : "Identify"}
+              {dict.nav.identify || "Identify"}
             </Link>
             {sessionUser ? (
               <Link
@@ -139,7 +139,7 @@ export default function AppNavbar() {
                   pathname === "/history" ? "bg-blue-50 text-blue-600" : "text-slate-600 hover:bg-slate-50"
                 }`}
               >
-                {dict.nav.predictionHistory || "History"}
+                {dict.nav.history || "History"}
               </Link>
             ) : null}
           </div>
