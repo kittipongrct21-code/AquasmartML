@@ -302,7 +302,7 @@ export default function FishForm({
           </div>
 
           <div className="md:col-span-2">
-            <label className={labelClass}>How to Identify</label>
+            <label className={labelClass}>Identification Guide</label>
             <textarea
               className={textareaClass}
               rows={3}

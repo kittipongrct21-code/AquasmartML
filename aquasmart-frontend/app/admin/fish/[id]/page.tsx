@@ -323,7 +323,7 @@ export default function AdminFishDetailPage() {
             {fish.identify_text ? (
               <div className="mt-6 rounded-2xl bg-slate-50 px-4 py-4">
                 <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                  Identify Text
+                  Identification Guide
                 </p>
                 <p className="mt-2 text-sm leading-7 text-slate-700">
                   {fish.identify_text}

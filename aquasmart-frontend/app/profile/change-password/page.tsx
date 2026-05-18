@@ -163,7 +163,7 @@ function ChangePasswordPageContent() {
         <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <p className="text-sm font-semibold text-blue-600">Security</p>
+              <p className="text-sm font-semibold text-blue-600">Change password</p>
               <h1 className="mt-2 text-4xl font-extrabold tracking-tight text-slate-900">
                 Change Password
               </h1>

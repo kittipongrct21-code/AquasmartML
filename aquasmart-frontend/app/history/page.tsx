@@ -127,7 +127,7 @@ export default function HistoryPage() {
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
               <Link href="/profile" className="rounded-2xl bg-slate-100 px-4 py-3 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-200">{dict.history.backToProfile}</Link>
-              <Link href="/identify" className="rounded-2xl bg-blue-600 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-blue-700">{dict.history.identifyMore}</Link>
+              <Link href="/identify" className="rounded-2xl bg-blue-600 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-blue-700">{dict.history.predictMore}</Link>
             </div>
           </div>
           {/* 🔧 แก้ไขตรงนี้: ใช้ Dictionary แทนข้อความ Hardcode */}
@@ -147,7 +147,7 @@ export default function HistoryPage() {
              <h3 className="mt-4 text-lg font-bold text-slate-900">{dict.history.noHistoryTitle}</h3>
              <p className="mt-2 text-sm text-slate-500">{dict.history.noHistoryDesc}</p>
              <div className="mt-6">
-               <Link href="/identify" className="inline-flex rounded-2xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-700">{dict.history.goIdentify}</Link>
+               <Link href="/identify" className="inline-flex rounded-2xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-700">{dict.history.goToPrediction}</Link>
              </div>
            </section>
         ) : (

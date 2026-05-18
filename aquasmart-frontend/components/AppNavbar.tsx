@@ -130,7 +130,7 @@ export default function AppNavbar() {
                 pathname === "/identify" ? "bg-blue-50 text-blue-600" : "text-slate-600 hover:bg-slate-50"
               }`}
             >
-              {dict.nav.identify || "Identify"}
+              {dict.nav.prediction || "Prediction"}
             </Link>
             {sessionUser ? (
               <Link

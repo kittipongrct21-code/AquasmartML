@@ -551,7 +551,7 @@ export default function ProfilePage() {
                   href="/identify"
                   className="rounded-2xl bg-slate-50 px-4 py-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
                 >
-                  {dict.profile.identifyFish}
+                  {dict.profile.predictFish}
                 </Link>
 
                 <Link

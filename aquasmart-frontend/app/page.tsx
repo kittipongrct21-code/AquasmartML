@@ -27,8 +27,8 @@ export default function HomePage() {
         <div className="grid grid-cols-2 gap-4 max-w-md mx-auto mt-8">
           <Link href="/identify" className="group flex flex-col items-center justify-center p-6 bg-white rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-blue-200 transition-all">
             <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition"><Camera className="w-6 h-6" /></div>
-            <span className="font-semibold text-slate-800">{t.landing.qaIdentifyTitle}</span>
-            <span className="text-xs text-slate-500 mt-1">{t.landing.qaIdentifyDesc}</span>
+            <span className="font-semibold text-slate-800">{t.landing.qaPredictionTitle}</span>
+            <span className="text-xs text-slate-500 mt-1">{t.landing.qaPredictionDesc}</span>
           </Link>
           <Link href="/fish" className="group flex flex-col items-center justify-center p-6 bg-white rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-emerald-200 transition-all">
             <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition"><Search className="w-6 h-6" /></div>

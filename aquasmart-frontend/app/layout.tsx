@@ -5,8 +5,8 @@ import { ToastProvider } from "@/components/providers/ToastProvider";
 import { I18nProvider } from "@/lib/i18n-context";
 
 export const metadata: Metadata = {
-  title: "AquaSmart ML - Fish Identification",
-  description: "Fish identification and fish information web application",
+  title: "AquaSmart ML - Fish Prediction",
+  description: "Fish prediction and fish information web application",
 };
 
 export default function RootLayout({

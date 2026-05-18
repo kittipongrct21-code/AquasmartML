@@ -133,7 +133,7 @@ export default function FishDetailPage() {
   const fishCategory = getLocalizedValue(fish, "category", locale);
   const fishHabitat = getLocalizedValue(fish, "habitat", locale);
   const fishOrigin = getLocalizedValue(fish, "origin", locale);
-  const fishIdentify = getLocalizedValue(fish, "identify_text", locale);
+  const fishIdentificationGuide = getLocalizedValue(fish, "identify_text", locale);
   const fishLifespan = getLocalizedValue(fish, "average_lifespan", locale);
   const fishSize = getLocalizedValue(fish, "adult_size", locale);
 
@@ -250,11 +250,11 @@ export default function FishDetailPage() {
               </AccessGuard>
             )}
 
-            {fishIdentify && (
+            {fishIdentificationGuide && (
               <div className="mt-8 pt-6 border-t border-slate-100">
                 <div className="rounded-2xl bg-blue-50/50 p-4 border border-blue-100">
-                  <h4 className="font-bold text-blue-900 mb-2">{locale === "th" ? "วิธีสังเกตและจำแนกสายพันธุ์ (Identification)" : "How to Identify"}</h4>
-                  <p className="text-slate-700 text-sm leading-7">{fishIdentify}</p>
+                  <h4 className="font-bold text-blue-900 mb-2">{locale === "th" ? "วิธีสังเกตและจำแนกสายพันธุ์" : "How to Identify"}</h4>
+                  <p className="text-slate-700 text-sm leading-7">{fishIdentificationGuide}</p>
                 </div>
               </div>
             )}

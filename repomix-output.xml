@@ -2866,7 +2866,7 @@ export default function AdminFishDetailPage() {
 
           <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-4">
             <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-              Identification Notes
+              Prediction Notes
             </p>
             <p className="mt-2 text-sm leading-7 text-slate-700">
               {fish.identify_text || "Not available"}
@@ -3198,7 +3198,7 @@ export default function FishDetailPage() {
                 <div className="prose prose-slate max-w-none">
                   {fish.identify_text && (
                     <div className="mb-4">
-                      <h4 className="font-medium text-slate-900 mb-2">Identification</h4>
+                      <h4 className="font-medium text-slate-900 mb-2">Prediction</h4>
                       <p className="text-slate-600">{fish.identify_text}</p>
                     </div>
                   )}
@@ -3759,7 +3759,7 @@ export const dictionaries = {
       type: "Type",
       category: "Category",
       habitat: "Habitat",
-      howToIdentify: "Identification",
+      howToIdentify: "Prediction",
       noMatchDesc: "No matching fish found in the catalog.",
       tryAnother: "Try Another",
       startNew: "Start New",
@@ -3848,7 +3848,7 @@ export const dictionaries = {
     },
     history: {
       title: "Prediction History",
-      desc: "View your past identification results.",
+      desc: "View your past prediction results.",
       backToProfile: "Back to Profile",
       identifyMore: "Identify More",
       totalRecords: "Total",
@@ -3869,7 +3869,7 @@ export const dictionaries = {
       unknownType: "Unknown Type",
     },
     landing: {
-      heroTitle: "Fish Search & Identification",
+      heroTitle: "Fish Search & Prediction",
       heroDesc: "Discover fish information and identify species with AI.",
       identifyFish: "Identify Fish",
       browseCatalog: "Browse Catalog",
@@ -9311,8 +9311,8 @@ import { ToastProvider } from "@/components/providers/ToastProvider";
 import { I18nProvider } from "@/lib/i18n-context";
 
 export const metadata: Metadata = {
-  title: "AquaSmart ML - Fish Identification",
-  description: "Fish identification and fish information web application",
+  title: "AquaSmart ML - Fish Prediction",
+  description: "Fish prediction and fish information web application",
 };
 
 export default function RootLayout({

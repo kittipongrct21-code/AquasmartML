@@ -191,6 +191,7 @@ export default function LoginPage() {
               >
                 {dict.auth.backToHome}
               </Link>
+              
             </div>
           </form>
         </section>

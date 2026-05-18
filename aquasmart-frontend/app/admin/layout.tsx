@@ -30,25 +30,25 @@ export default function AdminLayout({
 
   return (
     <AccessGuard mode="admin">
-      <div className="min-h-screen bg-slate-100 flex flex-col md:flex-row">
+      <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
         
-        {/* 📁 Sidebar นำทางระบบแอดมิน (UX นำสายตา) */}
-        <aside className="w-full md:w-64 bg-slate-900 text-white flex flex-col justify-between shrink-0">
+        {/* 📁 Sidebar ปรับดีไซน์ใหม่เป็นโทนสีขาว-น้ำเงินตามสั่ง */}
+        <aside className="w-full md:w-64 bg-white text-slate-700 flex flex-col justify-between shrink-0 border-r border-slate-200 shadow-sm">
           <div>
             
-            {/* โลโก้แบรนด์ฝั่งแอดมิน */}
-            <div className="h-20 flex items-center px-6 border-b border-slate-800 bg-slate-950">
-              <span className="text-xl font-black tracking-tight text-blue-400">
-                AquaSmart<span className="text-emerald-400">Admin</span>
+            {/* ส่วนป้ายหัวข้อปรับดีไซน์ใหม่ให้เข้าคู่กัน */}
+            {/* <div className="h-20 flex items-center px-6 border-b border-slate-200 bg-white">
+              <span className="text-xl font-black tracking-tight text-blue-600">
+                AquaSmart<span className="text-slate-900">Admin</span>
               </span>
-            </div>
+            </div> */}
 
-            {/* ชุดลิงก์เมนูหลักหลังบ้าน */}
+            {/* ชุดลิงก์เมนูนำทางสไตล์สีขาว-น้ำเงินนำสายตา */}
             <nav className="p-4 space-y-1">
               <SidebarLink 
                 href="/" 
                 icon={<Home className="h-5 w-5" />} 
-                label="Home (Public Site)" 
+                label="Home" 
                 active={pathname === "/"} 
               />
               <SidebarLink 
@@ -72,20 +72,20 @@ export default function AdminLayout({
             </nav>
           </div>
 
-          {/* ปุ่มสลักสิทธิ์ออกจากระบบท้ายเมนู */}
-          <div className="p-4 border-t border-slate-800 bg-slate-950/50">
+          {/* ปุ่มออกจากระบบดีไซน์แบบคลีนตัดขอบด้านล่าง */}
+          <div className="p-4 border-t border-slate-200 bg-slate-50/50">
             <button
               type="button"
               onClick={handleSignOut}
-              className="w-full flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold text-rose-400 hover:bg-rose-500/10 transition duration-200"
+              className="w-full flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold text-rose-600 hover:bg-rose-50 transition duration-200"
             >
-              <LogOut className="h-5 w-5" />
+              <LogOut className="h-5 w-5 text-rose-500" />
               Sign Out
             </button>
           </div>
         </aside>
 
-        {/* 🖥️ พื้นที่แผงสเกลเนื้อหารายละเอียดหน้าต่างๆ */}
+        {/* 🖥️ พื้นที่แสดงผลเนื้อหาระบบ */}
         <main className="flex-1 min-w-0 overflow-y-auto">
           <div className="p-4 sm:p-8 max-w-7xl mx-auto">
             {children}
@@ -101,10 +101,10 @@ function SidebarLink({ href, icon, label, active }: { href: string; icon: React.
   return (
     <Link
       href={href}
-      className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all duration-200 ${
+      className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold transition-all duration-200 ${
         active 
-          ? "bg-blue-600 text-white shadow-md shadow-blue-900/30" 
-          : "text-slate-400 hover:bg-slate-800 hover:text-white"
+          ? "bg-blue-600 text-white shadow-md shadow-blue-200/80" 
+          : "text-slate-600 hover:bg-slate-100 hover:text-blue-600"
       }`}
     >
       {icon}
