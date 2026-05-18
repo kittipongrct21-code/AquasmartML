@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { getPublicFishList, type FishListItem } from "@/lib/api";
 import { supabase } from "@/lib/supabase-client";
 import { useI18n, getLocalizedValue } from "@/lib/i18n-context";
+import { X, AlertCircle } from "lucide-react";
 
 type PredictionResponse = {
   status?: string;
@@ -38,6 +39,9 @@ export default function IdentifyPage() {
   const [isLoadingFish, setIsLoadingFish] = useState(true);
   const [isPredicting, setIsPredicting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+
+  // ✅ State ควบคุมการแสดงผล Popup เตือนช่วงพัฒนาระบบ
+  const [showNotice, setShowNotice] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
@@ -180,7 +184,6 @@ export default function IdentifyPage() {
     });
 
     const text = await response.text();
-    // Explicitly type the JSON response to handle both Success and Error cases
     let json: PredictionResponse | { detail?: string };
 
     try {
@@ -190,7 +193,6 @@ export default function IdentifyPage() {
     }
 
     if (!response.ok) {
-      // ✅ Type Guard: ตรวจสอบอย่างปลอดภัยว่า key 'detail' มีอยู่จริง
       if ("detail" in json && typeof json.detail === "string") {
         throw new Error(json.detail);
       }
@@ -280,306 +282,353 @@ export default function IdentifyPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8">
-      <section className="mx-auto max-w-5xl space-y-6">
-        <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="text-sm font-semibold text-blue-600">AI {t.nav.identify}</p>
-              <h1 className="mt-2 text-4xl font-extrabold tracking-tight text-slate-900">
-                {t.identify.title}
-              </h1>
-              <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
-                {t.identify.subtitle}
-              </p>
+    <div className="min-h-screen flex flex-col justify-between bg-slate-50/30">
+      
+      {/* ส่วนเนื้อหาระบบ */}
+      <main className="flex-grow px-4 py-8">
+        <section className="mx-auto max-w-5xl space-y-6">
+          <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-blue-600">AI {t.nav.identify}</p>
+                <h1 className="mt-2 text-4xl font-extrabold tracking-tight text-slate-900">
+                  {t.identify.title}
+                </h1>
+                <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
+                  {t.identify.subtitle}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Link
+                  href="/fish"
+                  className="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
+                >
+                  {t.identify.browseCatalog}
+                </Link>
+                <Link
+                  href="/history"
+                  className="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50"
+                >
+                  {t.identify.viewHistory}
+                </Link>
+              </div>
             </div>
-            <div className="flex flex-wrap gap-3">
-              <Link
-                href="/fish"
-                className="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
-              >
-                {t.identify.browseCatalog}
-              </Link>
-              <Link
-                href="/history"
-                className="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50"
-              >
-                {t.identify.viewHistory}
-              </Link>
-            </div>
-          </div>
-        </section>
+          </section>
 
-        <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-          <div className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
-            <div>
-              {/* ✅ Tailwind Fix: ใช้ min-h-80 แทน min-h-[320px] */}
-              <div className="relative flex min-h-80 items-center justify-center overflow-hidden rounded-3xl bg-slate-100">
-                {previewUrl ? (
-                  <Image
-                    src={previewUrl}
-                    alt="Selected fish"
-                    fill
-                    className="object-contain"
-                    unoptimized
-                  />
-                ) : (
-                  <div className="px-6 py-10 text-center">
-                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-lg font-bold text-blue-700">
-                      AS
+          <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+            <div className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
+              <div>
+                <div className="relative flex min-h-80 items-center justify-center overflow-hidden rounded-3xl bg-slate-100">
+                  {previewUrl ? (
+                    <Image
+                      src={previewUrl}
+                      alt="Selected fish"
+                      fill
+                      className="object-contain"
+                      unoptimized
+                    />
+                  ) : (
+                    <div className="px-6 py-10 text-center">
+                      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-lg font-bold text-blue-700">
+                        AS
+                      </div>
+                      <p className="mt-4 text-sm font-semibold text-slate-700">
+                        {t.identify.selectImage}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {t.identify.supportedFormats}
+                      </p>
                     </div>
-                    <p className="mt-4 text-sm font-semibold text-slate-700">
-                      {t.identify.selectImage}
+                  )}
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <label
+                    htmlFor="identify-file"
+                    className="inline-flex cursor-pointer rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
+                  >
+                    {t.identify.chooseImage}
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={handleClearImage}
+                    className="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50"
+                  >
+                    {t.common.clear}
+                  </button>
+
+                  <input
+                    id="identify-file"
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                </div>
+
+                {selectedFile ? (
+                  <p className="mt-3 text-sm text-slate-500">
+                    {t.identify.selectedFile}{" "}
+                    <span className="font-semibold text-slate-700">
+                      {selectedFile.name}
+                    </span>
+                  </p>
+                ) : null}
+              </div>
+
+              <div className="flex flex-col justify-between rounded-3xl bg-slate-50 p-5">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900">
+                    {t.identify.runPredictionTitle}
+                  </h2>
+                  <p className="mt-2 text-sm leading-7 text-slate-600">
+                    {t.identify.runPredictionDesc}
+                  </p>
+
+                  <div className="mt-5 space-y-3">
+                    <StatusRow
+                      label={t.identify.catalogStatus}
+                      value={isLoadingFish ? t.common.loading : `${fishList.length}`}
+                    />
+                    <StatusRow
+                      label={t.identify.sessionStatus}
+                      value={sessionUser ? t.identify.signedIn : t.identify.guestMode}
+                    />
+                    <StatusRow
+                      label={t.identify.historySaving}
+                      value={
+                        sessionUser
+                          ? t.identify.autoSave
+                          : t.identify.availableSignIn
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-6 space-y-3">
+                  <button
+                    type="button"
+                    onClick={handlePredict}
+                    disabled={isPredicting || isLoadingFish || !selectedFile}
+                    className="w-full rounded-2xl bg-blue-600 px-4 py-4 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                  >
+                    {isPredicting ? t.identify.identifying : t.identify.identifyNow}
+                  </button>
+
+                  {!sessionUser ? (
+                    <button
+                      type="button"
+                      onClick={handleSignInForHistory}
+                      className="w-full rounded-2xl bg-white px-4 py-4 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50"
+                    >
+                      {t.identify.signInToSave}
+                    </button>
+                  ) : (
+                    <Link
+                      href="/history"
+                      className="block w-full rounded-2xl bg-white px-4 py-4 text-center text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50"
+                    >
+                      {t.identify.openHistory}
+                    </Link>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {errorMessage ? (
+              <div className="mt-5 rounded-2xl bg-rose-50 px-4 py-4 text-sm text-rose-700">
+                {errorMessage}
+              </div>
+            ) : null}
+          </section>
+
+          {prediction ? (
+            <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-blue-600">{t.identify.aiResult}</p>
+                  <h2 className="mt-2 text-4xl font-extrabold tracking-tight text-slate-900">
+                    {displayName}
+                  </h2>
+                </div>
+
+                <span
+                  className={
+                    resultVariant === "known"
+                      ? "rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700"
+                      : resultVariant === "unknown"
+                      ? "rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700"
+                      : "rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700"
+                  }
+                >
+                  {prediction.prediction_type || "-"}
+                </span>
+              </div>
+
+              <div className="mt-5">
+                <div className="mb-2 flex items-center justify-between text-sm">
+                  <span className="font-semibold text-slate-700">{t.identify.confidence}</span>
+                  <span className="font-bold text-blue-700">
+                    {confidencePercent.toFixed(0)}%
+                  </span>
+                </div>
+                <div className="h-3 overflow-hidden rounded-full bg-slate-200">
+                  <div
+                    className="h-full rounded-full bg-blue-600 transition-all"
+                    style={{ width: `${confidencePercent}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <InfoCard
+                  label={t.identify.predictedClass}
+                  value={prediction.predicted_class || "-"}
+                />
+                <InfoCard
+                  label={t.identify.rawClass}
+                  value={prediction.raw_predicted_class || "-"}
+                />
+                <InfoCard
+                  label={t.identify.predictionType}
+                  value={prediction.prediction_type || "-"}
+                />
+                <InfoCard
+                  label={t.identify.catalogMatch}
+                  value={matchedFish ? (getLocalizedValue(matchedFish, "name", locale) || matchedFish.name) : "-"}
+                />
+              </div>
+
+              <div className="mt-6 rounded-3xl bg-slate-50 p-5">
+                {matchedFish ? (
+                  <>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-blue-600">
+                          {t.identify.matchedRecord}
+                        </p>
+                        <h3 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-900">
+                          {getLocalizedValue(matchedFish, "name", locale) || matchedFish.name}
+                        </h3>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleOpenFullDetails}
+                        className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+                      >
+                        {t.identify.openDetails}
+                      </button>
+                    </div>
+
+                    <p className="mt-4 text-sm leading-7 text-slate-600">
+                      {getLocalizedValue(matchedFish, "short_description", locale) ||
+                        "Basic information is available for this fish species."}
                     </p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {t.identify.supportedFormats}
-                    </p>
+
+                    {getLocalizedValue(matchedFish, "identify_text", locale) ? (
+                      <div className="mt-4 rounded-2xl bg-white px-4 py-4 shadow-sm ring-1 ring-slate-200">
+                        <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                          {t.identify.howToIdentify}
+                        </p>
+                        <p className="mt-2 text-sm leading-7 text-slate-700">
+                          {getLocalizedValue(matchedFish, "identify_text", locale)}
+                        </p>
+                      </div>
+                    ) : null}
+                  </>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="rounded-2xl bg-amber-50 px-4 py-4 text-sm text-amber-800">
+                      {t.identify.noMatchDesc}
+                    </div>
+
+                    <div className="flex flex-wrap gap-3">
+                      <Link
+                        href="/fish"
+                        className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+                      >
+                        {t.identify.browseCatalog}
+                      </Link>
+
+                      <button
+                        type="button"
+                        onClick={handleClearImage}
+                        className="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50"
+                      >
+                        {t.identify.tryAnother}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
 
-              <div className="mt-4 flex flex-wrap gap-3">
-                <label
-                  htmlFor="identify-file"
-                  className="inline-flex cursor-pointer rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
-                >
-                  {t.identify.chooseImage}
-                </label>
-
+              <div className="mt-6 flex flex-wrap gap-3">
                 <button
                   type="button"
                   onClick={handleClearImage}
+                  className="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
+                >
+                  {t.identify.startNew}
+                </button>
+
+                <Link
+                  href="/history"
                   className="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50"
                 >
-                  {t.common.clear}
-                </button>
-
-                <input
-                  id="identify-file"
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
+                  {t.identify.openHistory}
+                </Link>
               </div>
-
-              {selectedFile ? (
-                <p className="mt-3 text-sm text-slate-500">
-                  {t.identify.selectedFile}{" "}
-                  <span className="font-semibold text-slate-700">
-                    {selectedFile.name}
-                  </span>
-                </p>
-              ) : null}
-            </div>
-
-            <div className="flex flex-col justify-between rounded-3xl bg-slate-50 p-5">
-              <div>
-                <h2 className="text-xl font-bold text-slate-900">
-                  {t.identify.runPredictionTitle}
-                </h2>
-                <p className="mt-2 text-sm leading-7 text-slate-600">
-                  {t.identify.runPredictionDesc}
-                </p>
-
-                <div className="mt-5 space-y-3">
-                  <StatusRow
-                    label={t.identify.catalogStatus}
-                    value={isLoadingFish ? t.common.loading : `${fishList.length}`}
-                  />
-                  <StatusRow
-                    label={t.identify.sessionStatus}
-                    value={sessionUser ? t.identify.signedIn : t.identify.guestMode}
-                  />
-                  <StatusRow
-                    label={t.identify.historySaving}
-                    value={
-                      sessionUser
-                        ? t.identify.autoSave
-                        : t.identify.availableSignIn
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="mt-6 space-y-3">
-                <button
-                  type="button"
-                  onClick={handlePredict}
-                  disabled={isPredicting || isLoadingFish || !selectedFile}
-                  className="w-full rounded-2xl bg-blue-600 px-4 py-4 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-                >
-                  {isPredicting ? t.identify.identifying : t.identify.identifyNow}
-                </button>
-
-                {!sessionUser ? (
-                  <button
-                    type="button"
-                    onClick={handleSignInForHistory}
-                    className="w-full rounded-2xl bg-white px-4 py-4 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50"
-                  >
-                    {t.identify.signInToSave}
-                  </button>
-                ) : (
-                  <Link
-                    href="/history"
-                    className="block w-full rounded-2xl bg-white px-4 py-4 text-center text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50"
-                  >
-                    {t.identify.openHistory}
-                  </Link>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {errorMessage ? (
-            <div className="mt-5 rounded-2xl bg-rose-50 px-4 py-4 text-sm text-rose-700">
-              {errorMessage}
-            </div>
+            </section>
           ) : null}
         </section>
+      </main>
 
-        {prediction ? (
-          <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-blue-600">{t.identify.aiResult}</p>
-                <h2 className="mt-2 text-4xl font-extrabold tracking-tight text-slate-900">
-                  {displayName}
-                </h2>
-              </div>
+      {/* ✅ ปรับปรุงตามหลัก UI Quality: เพิ่มแถบเครดิตพัฒนาท้ายเพจ */}
+      <footer className="w-full border-t border-slate-200 bg-white py-4 text-center text-xs font-bold tracking-wide text-slate-400">
+        ระบบของเรากำลังพัฒนา อาจมีข้อผิดพลาดได้
+      </footer>
 
-              <span
-                className={
-                  resultVariant === "known"
-                    ? "rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700"
-                    : resultVariant === "unknown"
-                    ? "rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700"
-                    : "rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700"
-                }
-              >
-                {prediction.prediction_type || "-"}
-              </span>
+      {/* ✅ โมดอล Popup แจ้งเตือนข้อจำกัดระบบจำแนกปลาในช่วงพัฒนา */}
+      {showNotice ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-fade-in">
+          <div className="relative max-w-md w-full bg-white rounded-3xl p-6 shadow-2xl border border-slate-100 space-y-4">
+            
+            <button 
+              type="button"
+              onClick={() => setShowNotice(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 transition"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <div className="flex items-center gap-3 text-amber-500">
+              <AlertCircle className="h-6 w-6 shrink-0" />
+              <h3 className="text-lg font-extrabold text-slate-900">
+                {locale === "th" ? "ประกาศระบบกำลังพัฒนา" : "Development Notice"}
+              </h3>
             </div>
 
-            <div className="mt-5">
-              <div className="mb-2 flex items-center justify-between text-sm">
-                <span className="font-semibold text-slate-700">{t.identify.confidence}</span>
-                <span className="font-bold text-blue-700">
-                  {confidencePercent.toFixed(0)}%
-                </span>
-              </div>
-              <div className="h-3 overflow-hidden rounded-full bg-slate-200">
-                <div
-                  className="h-full rounded-full bg-blue-600 transition-all"
-                  style={{ width: `${confidencePercent}%` }}
-                />
-              </div>
-            </div>
+            <p className="text-sm font-medium leading-7 text-slate-600">
+              เนื่องจากตอนนี้ระบบของเราอยู่ในช่วงกำลังพัฒนา จึงทำให้ปลาที่สามารถทำนายได้มีเพียง 10 ชนิด นอกเหนือจากนั้นระบบจะตอบว่า ไม่ใช่ปลา หรือ ไม่รู้จักปลา ชนิดนี้ คุณสามารถ เข้าไปดูปลาสายพันธุ์อืนได้ที่ช่องค้นหาปลา ขออภัยในความไม่สดวก 
+            </p>
 
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <InfoCard
-                label={t.identify.predictedClass}
-                value={prediction.predicted_class || "-"}
-              />
-              <InfoCard
-                label={t.identify.rawClass}
-                value={prediction.raw_predicted_class || "-"}
-              />
-              <InfoCard
-                label={t.identify.predictionType}
-                value={prediction.prediction_type || "-"}
-              />
-              <InfoCard
-                label={t.identify.catalogMatch}
-                value={matchedFish ? (getLocalizedValue(matchedFish, "name", locale) || matchedFish.name) : "-"}
-              />
-            </div>
-
-            <div className="mt-6 rounded-3xl bg-slate-50 p-5">
-              {matchedFish ? (
-                <>
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-blue-600">
-                        {t.identify.matchedRecord}
-                      </p>
-                      <h3 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-900">
-                        {getLocalizedValue(matchedFish, "name", locale) || matchedFish.name}
-                      </h3>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={handleOpenFullDetails}
-                      className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
-                    >
-                      {t.identify.openDetails}
-                    </button>
-                  </div>
-
-                  <p className="mt-4 text-sm leading-7 text-slate-600">
-                    {getLocalizedValue(matchedFish, "short_description", locale) ||
-                      "Basic information is available for this fish species."}
-                  </p>
-
-                  {getLocalizedValue(matchedFish, "identify_text", locale) ? (
-                    <div className="mt-4 rounded-2xl bg-white px-4 py-4 shadow-sm ring-1 ring-slate-200">
-                      <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                        {t.identify.howToIdentify}
-                      </p>
-                      <p className="mt-2 text-sm leading-7 text-slate-700">
-                        {getLocalizedValue(matchedFish, "identify_text", locale)}
-                      </p>
-                    </div>
-                  ) : null}
-                </>
-              ) : (
-                <div className="space-y-4">
-                  <div className="rounded-2xl bg-amber-50 px-4 py-4 text-sm text-amber-800">
-                    {t.identify.noMatchDesc}
-                  </div>
-
-                  <div className="flex flex-wrap gap-3">
-                    <Link
-                      href="/fish"
-                      className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
-                    >
-                      {t.identify.browseCatalog}
-                    </Link>
-
-                    <button
-                      type="button"
-                      onClick={handleClearImage}
-                      className="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50"
-                    >
-                      {t.identify.tryAnother}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="mt-6 flex flex-wrap gap-3">
+            <div className="pt-2">
               <button
                 type="button"
-                onClick={handleClearImage}
-                className="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
+                onClick={() => setShowNotice(false)}
+                className="w-full rounded-2xl bg-blue-600 py-3 text-sm font-bold text-white transition hover:bg-blue-700 shadow-sm"
               >
-                {t.identify.startNew}
+                {locale === "th" ? "รับทราบและปิดหน้าต่าง" : "Dismiss Notice"}
               </button>
-
-              <Link
-                href="/history"
-                className="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50"
-              >
-                {t.identify.openHistory}
-              </Link>
             </div>
-          </section>
-        ) : null}
-      </section>
-    </main>
+
+          </div>
+        </div>
+      ) : null}
+
+    </div>
   );
 }
 
