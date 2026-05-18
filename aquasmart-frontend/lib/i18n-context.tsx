@@ -1,39 +1,50 @@
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode } from "react";
-import { dictionaries, type Locale } from "./dictionaries";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { en } from "@/dictionaries/en";
+import { th } from "@/dictionaries/th";
 
-type Dictionary = typeof dictionaries.en;
+type Locale = "en" | "th";
 
-interface I18nContextType {
+type I18nContextType = {
   locale: Locale;
-  t: Dictionary;
   setLocale: (locale: Locale) => void;
-}
+  t: typeof en;
+};
 
-const I18nContext = createContext<I18nContextType | undefined>(undefined);
-
-function getInitialLocale(): Locale {
-  if (typeof window === "undefined") {
-    return "en";
-  }
-
-  const savedLocale = localStorage.getItem("app_locale");
-  return savedLocale === "th" ? "th" : "en";
-}
+const I18nContext = createContext<I18nContextType | null>(null);
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(getInitialLocale);
+  const [locale, setLocaleState] = useState<Locale>("en");
+  
+  // ✅ 1. เพิ่ม State เพื่อเช็กว่าตอนนี้กำลังรันอยู่บนบราวเซอร์ (Client) หรือยัง
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    // โค้ดนี้จะทำงานเฉพาะบนบราวเซอร์เท่านั้น
+    const saved = localStorage.getItem("locale") as Locale;
+    if (saved === "th" || saved === "en") {
+      setLocaleState(saved);
+    }
+    // ✅ 2. สั่งเปิดไฟเขียวเมื่อโหลดเสร็จ
+    setIsMounted(true);
+  }, []);
 
   const setLocale = (newLocale: Locale) => {
     setLocaleState(newLocale);
-    localStorage.setItem("app_locale", newLocale);
+    localStorage.setItem("locale", newLocale);
   };
 
-  const t = dictionaries[locale] ?? dictionaries.en;
+  const t = locale === "th" ? th : en;
+
+  // ✅ 3. ท่าไม้ตาย: ถ้าระบบยังไม่ Mount ให้รอไปก่อน ห้ามเพิ่งเรนเดอร์หน้าจอ
+  // (แก้ปัญหา React Error #418 Hydration Mismatch แบบถอนรากถอนโคน)
+  if (!isMounted) {
+    return null; 
+  }
 
   return (
-    <I18nContext.Provider value={{ locale, t, setLocale }}>
+    <I18nContext.Provider value={{ locale, setLocale, t }}>
       {children}
     </I18nContext.Provider>
   );
@@ -41,20 +52,26 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
 export function useI18n() {
   const context = useContext(I18nContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error("useI18n must be used within an I18nProvider");
   }
   return context;
 }
 
-export function getLocalizedValue<T extends Record<string, unknown>>(
-  obj: T | null | undefined,
-  key: keyof T & string,
-  locale: Locale
+// ฟังก์ชันช่วยดึงค่าสองภาษาจากฐานข้อมูล (เหมือนเดิม)
+export function getLocalizedValue(
+  obj: Record<string, any> | null | undefined,
+  baseKey: string,
+  locale: "en" | "th"
 ): string {
   if (!obj) return "";
-  if (locale === "th" && obj[`${key}_th`]) {
-    return String(obj[`${key}_th`]);
+  
+  if (locale === "th") {
+    const thKey = `${baseKey}_th`;
+    if (obj[thKey] && typeof obj[thKey] === "string" && obj[thKey].trim() !== "") {
+      return obj[thKey];
+    }
   }
-  return obj[key] ? String(obj[key]) : "";
+  
+  return obj[baseKey] ? String(obj[baseKey]) : "";
 }

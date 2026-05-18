@@ -77,3 +77,25 @@ git push -u origin main
 5. ไปที่แท็บ **Deployments** แล้วกดปุ่มจุดสามจุดเลือก **"Redeploy"**
 
 เท่านี้เสร็จสิ้นครับ! ระบบ AquaSmart-ML ของคุณจะออนไลน์เต็มรูปแบบและพร้อมส่งลิงก์ให้ทีมหรือผู้ใช้งานคนอื่นทดสอบได้ทันที 🎉
+
+---
+
+## 🛠️ 5. คู่มือการแก้ไขปัญหาและบันทึก Hotfix (Production Updates)
+
+นี่คือบันทึกความผิดพลาดและการแก้ไขปัญหา (Hotfixes & Configuration Updates) ล่าสุดบนระบบโปรดักชัน เพื่อความเสถียรและความปลอดภัยของระบบ:
+
+### 🚨 Hotfix 1: ปัญหา React Hydration Mismatch (Error #418) บน Vercel Production
+* **อาการของปัญหา (Symptoms):** เมื่อเปิดหน้าแคตตาล็อกปลา (`/fish`) หรือหน้าอื่นๆ บน Vercel หน้าจอจะค้างขาว (Hard Crash) และมีข้อผิดพลาด `Uncaught Error: Minified React error #418` ปรากฏในบราวเซอร์คอนโซล
+* **สาเหตุ (Root Cause):** เกิดจากการเรนเดอร์ขัดแย้งกันระหว่าง Server-Side Rendering (Vercel) และ Client-Side Rendering (Browser) โดย [i18n-context.tsx](file:///d:/AquaSmart-ML/aquasmart-frontend/lib/i18n-context.tsx) พยายามอ่านภาษาจาก `localStorage` ทันทีที่เริ่มต้นโหลด ซึ่งเซิร์ฟเวอร์อ่านไม่ได้แต่บราวเซอร์อ่านได้ ส่งผลให้ HTML สองฝั่งไม่ตรงกัน (Hydration Text Mismatch)
+* **การแก้ไข (Resolution):** ปรับปรุง `I18nProvider` โดยเพิ่มตัวแปรสถานะ `isMounted` เข้ามาดัก หากระบบยังโหลดฝั่งไคลเอนต์ไม่เสร็จสมบูรณ์ (`!isMounted`) จะระงับการเรนเดอร์ชั่วคราว (`return null`) เพื่อให้ Next.js รอจนกว่าบราวเซอร์จะเมาท์เสร็จสมบูรณ์ จึงค่อยดึงค่าจาก `localStorage` มาแสดงผลได้อย่างถูกต้องปลอดภัย
+
+### 🚨 Hotfix 2: ปัญหาลิงก์กู้คืนรหัสผ่าน (Password Recovery Link) ชี้ไปที่ localhost
+* **อาการของปัญหา (Symptoms):** ผู้ใช้สามารถกดและส่งอีเมลเพื่อขอ "ลืมรหัสผ่าน" (Forgot Password) ได้สำเร็จ แต่เมื่อกดลิงก์ในอีเมลแล้ว ลิงก์กลับส่งผู้ใช้ไปที่ `http://localhost:3000/...` เสมอ ทำให้ไม่สามารถกู้คืนรหัสผ่านบนเว็บจริงได้
+* **สาเหตุ (Root Cause):** ค่าคอนฟิก Site URL ของบริการ Authentication ในระบบ Supabase Dashboard ยังคงชี้เป้าหลักไปที่เครื่อง Localhost (สภาพแวดล้อมระหว่างพัฒนา) 
+* **การแก้ไข (Resolution):**
+  1. **การตั้งค่า Supabase Dashboard (Auth Config):**
+     * อัปเดต **Site URL** ในเมนู *Authentication -> URL Configuration* ให้ชี้ไปที่โดเมนจริงของ Vercel: `https://aquasmart-ml-w6nr.vercel.app`
+     * เพิ่ม **Redirect URLs** เป็น `https://aquasmart-ml-w6nr.vercel.app/`
+  2. **ปรับปรุงโค้ดฝั่ง Frontend (Router Fix):**
+     * เพิ่มลอจิกความปลอดภัยในไฟล์ [AppNavbar.tsx](file:///d:/AquaSmart-ML/aquasmart-frontend/components/AppNavbar.tsx) ในฟังก์ชัน `supabase.auth.onAuthStateChange`
+     * หากระบบตรวจพบอีเวนต์ประเภท `PASSWORD_RECOVERY` ตัวโมดูลนำทางของแอปพลิเคชันจะดักสัญญาณแล้วเปลี่ยนเส้นทาง (Redirect) ส่งผู้ใช้อัตโนมัติไปที่หน้าฟอร์มตั้งรหัสผ่านใหม่ที่หน้า `/auth/reset-password` บน Vercel ทันที

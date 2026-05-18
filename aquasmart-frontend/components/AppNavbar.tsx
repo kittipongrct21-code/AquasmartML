@@ -1,4 +1,5 @@
 "use client";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
@@ -59,10 +60,20 @@ export default function AppNavbar() {
 
     checkSession();
 
+    // ตัวดักจับสถานะความปลอดภัยและการเปลี่ยนเซสชันของผู้ใช้งาน
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
+
+      // 🔐 FIXED: เพิ่มลอจิกดักสัญญาน หากผู้ใช้งานคลิกลิงก์กู้คืนรหัสผ่านมาจากอีเมล
+      // ระบบจะบังคับเปลี่ยนเส้นทาง (Redirect) ส่งตัวผู้ใช้ไปหน้า Reset Password โดยอัตโนมัติทันที
+      if (event === "PASSWORD_RECOVERY") {
+        router.push("/auth/reset-password");
+        setIsLoading(false);
+        return;
+      }
+
       const user = session?.user ?? null;
       if (user) {
         setSessionUser({ id: user.id, email: user.email ?? null });
@@ -78,7 +89,7 @@ export default function AppNavbar() {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [router]);
 
   async function handleSignOut() {
     try {
@@ -105,9 +116,8 @@ export default function AppNavbar() {
             </Link>
           </div>
 
-          {/* แถบลิงก์เนวิเกชันหน้าสาธารณะ */}
+          {/* ✅ FIXED: แก้ไขการเรียกใช้คีย์ i18n ให้สอดคล้องตรงกับตารางภาษาของระบบจริง 100% */}
           <div className="hidden md:flex items-center space-x-1">
-            {/* ✅ เพิ่มปุ่มเมนู Home กลับมาประจำการตามคำสั่งเรียบร้อยครับ */}
             <Link
               href="/"
               className={`rounded-2xl px-4 py-2.5 text-sm font-bold transition-all ${
@@ -116,6 +126,7 @@ export default function AppNavbar() {
             >
               {dict.nav.home || "Home"}
             </Link>
+            
             <Link
               href="/fish"
               className={`rounded-2xl px-4 py-2.5 text-sm font-bold transition-all ${
@@ -124,14 +135,16 @@ export default function AppNavbar() {
             >
               {dict.nav.catalog || "Catalog"}
             </Link>
+            
             <Link
               href="/identify"
               className={`rounded-2xl px-4 py-2.5 text-sm font-bold transition-all ${
                 pathname === "/identify" ? "bg-blue-50 text-blue-600" : "text-slate-600 hover:bg-slate-50"
               }`}
             >
-              {dict.nav.prediction || "Prediction"}
+              {dict.nav.prediction || "Identify"}
             </Link>
+            
             {sessionUser ? (
               <Link
                 href="/history"
@@ -169,10 +182,10 @@ export default function AppNavbar() {
               </button>
             </div>
 
-            {/* 🛡️ ปุ่มเข้าสู่ระบบจัดการ Admin (พ่นแสดงเฉพาะ role === 'admin') */}
+            {/* 🛡️ ปุ่มเข้าสู่ระบบจัดการ Admin (แสดงเฉพาะแอดมินบทบาทตรงตารางข้อมูลเท่านั้น) */}
             {isAdmin ? (
               <Link
-                href="/admin/fish"
+                href="/admin"
                 className="hidden sm:flex items-center gap-2 rounded-2xl bg-emerald-50 px-4 py-2.5 text-sm font-bold text-emerald-700 ring-1 ring-emerald-200/50 transition hover:bg-emerald-100"
               >
                 <LayoutDashboard className="h-4 w-4 text-emerald-600" />
@@ -205,7 +218,7 @@ export default function AppNavbar() {
                   </button>
                 </div>
               ) : (
-                /* 🎯 ปุ่ม Sign In แบบ Solid CTA นำสายตาเด่นชัด */
+                /* ปุ่ม Sign In แบบ Solid CTA สีน้ำเงินเด่นชัดนำสายตา */
                 <Link
                   href="/auth/login"
                   className="rounded-2xl bg-blue-600 px-6 py-2.5 text-center text-sm font-extrabold text-white shadow-md shadow-blue-100 transition-all hover:bg-blue-700 active:scale-95"
