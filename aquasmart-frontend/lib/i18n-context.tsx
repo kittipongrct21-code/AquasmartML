@@ -1,8 +1,9 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { en } from "@/dictionaries/en";
-import { th } from "@/dictionaries/th";
+import { dictionaries } from "./dictionaries";
+const en = dictionaries.en;
+const th = dictionaries.th;
 
 type Locale = "en" | "th";
 
