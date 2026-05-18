@@ -7,16 +7,19 @@ import { supabase } from "@/lib/supabase-client";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/lib/i18n-context";
 import ValidationModal from "@/components/common/ValidationModal";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function SignupPage() {
   const router = useRouter();
   const { showSuccess } = useToast();
-  const { t: dict } = useI18n();
+  const { t: dict, locale } = useI18n();
 
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorModal, setErrorModal] = useState({
@@ -62,8 +65,8 @@ export default function SignupPage() {
     if (!email.trim() || !password || !confirmPassword) {
       setErrorModal({
         open: true,
-        title: "ข้อมูลไม่ครบถ้วน",
-        message: "กรุณากรอกอีเมลและรหัสผ่านให้ครบทุกช่อง",
+        title: locale === "th" ? "ข้อมูลไม่ครบถ้วน" : "Missing information",
+        message: locale === "th" ? "กรุณากรอกอีเมลและรหัสผ่านให้ครบทุกช่อง" : "Please fill in all fields.",
       });
       return;
     }
@@ -71,8 +74,8 @@ export default function SignupPage() {
     if (password.length < 6) {
       setErrorModal({
         open: true,
-        title: "รหัสผ่านสั้นเกินไป",
-        message: "รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร",
+        title: locale === "th" ? "รหัสผ่านสั้นเกินไป" : "Password too short",
+        message: locale === "th" ? "รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร" : "Password must be at least 6 characters.",
       });
       return;
     }
@@ -80,8 +83,8 @@ export default function SignupPage() {
     if (password !== confirmPassword) {
       setErrorModal({
         open: true,
-        title: "รหัสผ่านไม่ตรงกัน",
-        message: "กรุณาตรวจสอบรหัสผ่านและยืนยันรหัสผ่านอีกครั้ง",
+        title: locale === "th" ? "รหัสผ่านไม่ตรงกัน" : "Passwords do not match",
+        message: locale === "th" ? "กรุณาตรวจสอบรหัสผ่านและยืนยันรหัสผ่านอีกครั้ง" : "Please check your passwords and try again.",
       });
       return;
     }
@@ -98,7 +101,13 @@ export default function SignupPage() {
       // ดักจับ Error จาก Supabase
       if (authError) {
         const isAlreadyRegistered = authError.message.toLowerCase().includes("already registered");
-        throw new Error(isAlreadyRegistered ? "อีเมลนี้ถูกใช้งานแล้ว กรุณาใช้อีเมลอื่นหรือเข้าสู่ระบบ" : authError.message);
+        throw new Error(
+          isAlreadyRegistered
+            ? (locale === "th"
+                ? "อีเมลนี้ถูกใช้งานแล้ว กรุณาใช้อีเมลอื่นหรือเข้าสู่ระบบ"
+                : "This email is already registered. Please use another email or log in.")
+            : authError.message
+        );
       }
 
       // 3. ถ้าได้ User กลับมา ให้สร้าง Profile ต่อเลยโดยตรง
@@ -115,8 +124,7 @@ export default function SignupPage() {
         }
       }
 
-      // 💡 แก้ปัญหาตัวแดง: ใช้ String แทนการดึงจาก dict ที่ยังไม่มีคีย์นี้
-      showSuccess("สร้างบัญชีสำเร็จ! / Account created successfully.");
+      showSuccess(locale === "th" ? "สร้างบัญชีสำเร็จแล้ว!" : "Account created successfully!");
 
       // 4. เช็กว่า Supabase Auto-login ให้หรือยัง
       if (authData.session) {
@@ -130,7 +138,7 @@ export default function SignupPage() {
       console.error("Failed to sign up:", error);
       setErrorModal({
         open: true,
-        title: "สร้างบัญชีไม่สำเร็จ",
+        title: locale === "th" ? "สร้างบัญชีไม่สำเร็จ" : "Account Creation Failed",
         message: error instanceof Error ? error.message : "Failed to create account.",
       });
     } finally {
@@ -213,15 +221,24 @@ export default function SignupPage() {
               >
                 {dict?.auth?.passwordLabel || "Password"}
               </label>
-              <input
-                id="password"
-                type="password"
-                autoComplete="new-password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder={dict?.auth?.passwordPlaceholder || "Password"}
-                className="block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-              />
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="new-password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder={dict?.auth?.passwordPlaceholder || "Password"}
+                  className="block w-full rounded-2xl border border-slate-200 bg-white pl-4 pr-12 py-3 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
               <p className="mt-2 text-xs text-slate-500">
                 {dict?.auth?.passwordTip || "Min 6 characters"}
               </p>
@@ -234,15 +251,24 @@ export default function SignupPage() {
               >
                 {dict?.auth?.confirmPasswordLabel || "Confirm Password"}
               </label>
-              <input
-                id="confirm-password"
-                type="password"
-                autoComplete="new-password"
-                value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
-                placeholder={dict?.auth?.confirmPasswordPlaceholder || "Confirm password"}
-                className="block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-              />
+              <div className="relative">
+                <input
+                  id="confirm-password"
+                  type={showConfirmPassword ? "text" : "password"}
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  placeholder={dict?.auth?.confirmPasswordPlaceholder || "Confirm password"}
+                  className="block w-full rounded-2xl border border-slate-200 bg-white pl-4 pr-12 py-3 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
+                >
+                  {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
             </div>
 
             <div className="flex flex-wrap gap-3">

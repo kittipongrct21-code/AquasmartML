@@ -266,9 +266,64 @@ export default function AdminFishPage() {
       ) : null}
 
       {isLoading ? (
-        <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-          <div className="rounded-2xl bg-slate-50 px-4 py-4 text-sm text-slate-600">
-            {dict.admin.loadingData}
+        <section className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200 animate-pulse">
+          <div className="hidden overflow-x-auto md:block">
+            <table className="min-w-full">
+              <thead className="bg-slate-50">
+                <tr className="text-left text-sm text-slate-500">
+                  <th className="px-5 py-4 font-semibold">{dict.admin.fishCol}</th>
+                  <th className="px-5 py-4 font-semibold">{dict.admin.categoryCol}</th>
+                  <th className="px-5 py-4 font-semibold">{dict.admin.typeCol}</th>
+                  <th className="px-5 py-4 font-semibold">{dict.admin.statusCol}</th>
+                  <th className="px-5 py-4 text-right font-semibold">{dict.admin.actionsCol}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i} className="border-t border-slate-100 text-sm">
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-4">
+                        <div className="h-14 w-14 rounded-2xl bg-slate-200" />
+                        <div className="space-y-2 flex-1 min-w-0">
+                          <div className="h-4 bg-slate-200 w-24 rounded" />
+                          <div className="h-3 bg-slate-100 w-32 rounded" />
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-4"><div className="h-4 bg-slate-100 w-16 rounded" /></td>
+                    <td className="px-5 py-4"><div className="h-4 bg-slate-100 w-16 rounded" /></td>
+                    <td className="px-5 py-4"><div className="h-6 bg-slate-100 w-12 rounded-full" /></td>
+                    <td className="px-5 py-4">
+                      <div className="flex justify-end gap-2">
+                        <div className="h-8 w-12 bg-slate-200 rounded-xl" />
+                        <div className="h-8 w-12 bg-slate-200 rounded-xl" />
+                        <div className="h-8 w-16 bg-slate-100 rounded-xl" />
+                        <div className="h-8 w-16 bg-slate-100 rounded-xl" />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="grid gap-4 p-4 md:hidden">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="rounded-3xl border border-slate-100 bg-white p-4 space-y-4">
+                <div className="flex gap-3">
+                  <div className="h-20 w-20 bg-slate-200 rounded-2xl shrink-0" />
+                  <div className="space-y-2 flex-1">
+                    <div className="h-4 bg-slate-200 w-2/3 rounded" />
+                    <div className="h-3 bg-slate-100 w-1/3 rounded" />
+                    <div className="h-3 bg-slate-100 w-1/2 rounded" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="h-10 bg-slate-100 rounded-2xl" />
+                  <div className="h-10 bg-slate-100 rounded-2xl" />
+                </div>
+              </div>
+            ))}
           </div>
         </section>
       ) : null}

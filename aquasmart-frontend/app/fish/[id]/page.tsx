@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getPublicFishById, type FishListItem, type FishDetailResponse } from "@/lib/api";
 import { useI18n, getLocalizedValue } from "@/lib/i18n-context";
-import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { AccessGuard } from "@/components/guards/AccessGuard";
 import { Lock, Images, ArrowLeft } from "lucide-react";
 
@@ -123,7 +122,43 @@ export default function FishDetailPage() {
     })).filter((item) => item.value.trim() !== "");
   }, [detail?.ornamental_info, locale]);
 
-  if (loading) return <LoadingSpinner message={dict.common?.loading || "Loading..."} />;
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-8 animate-pulse">
+        {/* Back button skeleton */}
+        <div className="mb-6">
+          <div className="h-10 w-40 bg-slate-200 rounded-2xl" />
+        </div>
+
+        {/* Main Card skeleton */}
+        <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
+          <div className="aspect-video bg-slate-200 w-full max-h-[400px]" />
+          
+          <div className="p-6 space-y-6">
+            <div className="h-10 bg-slate-200 rounded-lg w-1/3 animate-pulse" />
+            <div className="h-20 bg-slate-50 rounded-2xl w-full animate-pulse" />
+
+            {/* Tabs skeleton */}
+            <div className="flex gap-2 border-b border-slate-100 pb-3">
+              <div className="h-9 w-24 bg-slate-200 rounded-xl" />
+              <div className="h-9 w-32 bg-slate-100 rounded-xl" />
+              <div className="h-9 w-32 bg-slate-100 rounded-xl" />
+              <div className="h-9 w-24 bg-slate-100 rounded-xl" />
+            </div>
+
+            {/* Info grid skeleton */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="h-20 bg-slate-50 rounded-2xl" />
+              <div className="h-20 bg-slate-50 rounded-2xl" />
+              <div className="h-20 bg-slate-50 rounded-2xl" />
+              <div className="h-20 bg-slate-50 rounded-2xl" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (error) return <div className="text-center py-12 text-red-600">{error}</div>;
   if (!fish) return <div className="text-center py-12">{dict.catalog?.noMatch || "Fish not found"}</div>;
 

@@ -307,8 +307,40 @@ export default function ProfilePage() {
   if (isCheckingSession) {
     return (
       <main className="min-h-screen px-4 py-8">
-        <section className="mx-auto max-w-5xl rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-          <p className="text-sm text-slate-500">{dict.profile.checkingSession}</p>
+        <section className="mx-auto max-w-5xl space-y-6 animate-pulse">
+          {/* Header section skeleton */}
+          <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+            <div className="h-4 bg-slate-200 w-16 rounded" />
+            <div className="h-8 bg-slate-200 w-1/3 rounded mt-2" />
+            <div className="h-4 bg-slate-100 w-2/3 rounded mt-3" />
+          </section>
+
+          {/* Profile Card / Info Section skeleton */}
+          <div className="grid gap-6 lg:grid-cols-3">
+            <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 lg:col-span-2 space-y-6">
+              <div className="flex flex-col items-center gap-6 sm:flex-row">
+                <div className="h-24 w-24 rounded-full bg-slate-200 shrink-0" />
+                <div className="space-y-2 flex-1 w-full">
+                  <div className="h-4 bg-slate-100 w-1/4 rounded" />
+                  <div className="h-10 bg-slate-100 rounded-2xl w-full" />
+                </div>
+              </div>
+
+              <div className="h-20 bg-slate-50 rounded-2xl w-full" />
+
+              <div className="flex gap-3">
+                <div className="h-11 w-32 bg-slate-200 rounded-2xl" />
+                <div className="h-11 w-24 bg-slate-100 rounded-2xl" />
+              </div>
+            </section>
+
+            {/* Quick Actions / Shortcuts skeleton */}
+            <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 space-y-4">
+              <div className="h-5 bg-slate-200 w-1/3 rounded" />
+              <div className="h-20 bg-slate-50 rounded-2xl w-full animate-pulse" />
+              <div className="h-20 bg-slate-50 rounded-2xl w-full animate-pulse" />
+            </section>
+          </div>
         </section>
       </main>
     );

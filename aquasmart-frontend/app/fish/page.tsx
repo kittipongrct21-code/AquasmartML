@@ -2,7 +2,6 @@
 import { useState, useEffect } from "react";
 import { getPublicFishList, type FishListItem } from "@/lib/api";
 import { useI18n } from "@/lib/i18n-context";
-import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { Search, Filter } from "lucide-react";
 import Link from "next/link";
 
@@ -48,8 +47,6 @@ export default function FishCatalogPage() {
 
   const categories = [...new Set(fish.map((f) => f.category || "").filter(Boolean))] as string[];
 
-  if (loading) return <LoadingSpinner message={t.common?.loading || "Loading..."} />;
-
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       <div className="mb-8">
@@ -70,7 +67,7 @@ export default function FishCatalogPage() {
               placeholder={t.catalog?.searchPlaceholder || "Search fish..."}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
             />
           </div>
           <div className="relative">
@@ -78,7 +75,7 @@ export default function FishCatalogPage() {
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
+              className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white outline-none transition"
             >
               <option value="">{t.catalog?.allCategories || "All Categories"}</option>
               {categories.map((cat) => (
@@ -91,7 +88,22 @@ export default function FishCatalogPage() {
         </div>
       </div>
 
-      {filteredFish.length === 0 ? (
+      {loading ? (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div
+              key={i}
+              className="bg-white rounded-xl border border-slate-200 overflow-hidden animate-pulse"
+            >
+              <div className="aspect-video bg-slate-200" />
+              <div className="p-4 space-y-3">
+                <div className="h-5 bg-slate-200 rounded w-2/3" />
+                <div className="h-4 bg-slate-100 rounded w-1/4" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : filteredFish.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-slate-600">{t.catalog?.noMatch || "No fish found"}</p>
         </div>
@@ -101,7 +113,7 @@ export default function FishCatalogPage() {
             <Link
               key={fish.id}
               href={`/fish/${fish.id}`}
-              className="bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-lg transition-shadow"
+              className="bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-lg transition-all duration-300"
             >
               <div className="aspect-video bg-slate-100 relative">
                 {fish.cover_image_url ? (
@@ -111,7 +123,7 @@ export default function FishCatalogPage() {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-slate-400">
+                  <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm">
                     No Image
                   </div>
                 )}
@@ -121,7 +133,7 @@ export default function FishCatalogPage() {
                   {locale === "th" ? fish.name_th || fish.name : fish.name}
                 </h3>
                 {fish.category && (
-                  <span className="inline-block px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-full">
+                  <span className="inline-block px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-semibold rounded-full">
                     {fish.category}
                   </span>
                 )}

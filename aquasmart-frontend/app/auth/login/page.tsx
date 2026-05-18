@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase-client";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useI18n } from "@/lib/i18n-context";
 import ValidationModal from "@/components/common/ValidationModal";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -15,6 +16,7 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorModal, setErrorModal] = useState({
@@ -59,8 +61,8 @@ export default function LoginPage() {
     if (!email.trim() || !password) {
       setErrorModal({
         open: true,
-        title: "ข้อมูลไม่ครบถ้วน",
-        message: "กรุณากรอกอีเมลและรหัสผ่านให้ครบถ้วน",
+        title: locale === "th" ? "ข้อมูลไม่ครบถ้วน" : "Missing information",
+        message: locale === "th" ? "กรุณากรอกอีเมลและรหัสผ่านให้ครบถ้วน" : "Please enter both email and password.",
       });
       return;
     }
@@ -77,7 +79,11 @@ export default function LoginPage() {
         throw new Error("Login succeeded but user session was not returned.");
       }
 
-      showSuccess("เข้าสู่ระบบสำเร็จ กำลังพาคุณไปยังหน้าโปรไฟล์...");
+      showSuccess(
+        locale === "th"
+          ? "เข้าสู่ระบบสำเร็จ กำลังพาคุณไปยังหน้าโปรไฟล์..."
+          : "Login successful! Redirecting to profile..."
+      );
       router.push("/profile");
       router.refresh();
     } catch (error: unknown) {
@@ -87,12 +93,16 @@ export default function LoginPage() {
       const message =
         errorMessage.includes("Invalid login") ||
         errorMessage.includes("Incorrect password")
-          ? "อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง"
-          : "เกิดข้อผิดพลาดในการเชื่อมต่อระบบ กรุณาลองใหม่อีกครั้ง";
+          ? (locale === "th"
+              ? "อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง"
+              : "Invalid email or password. Please try again.")
+          : (locale === "th"
+              ? "เกิดข้อผิดพลาดในการเชื่อมต่อระบบ กรุณาลองใหม่อีกครั้ง"
+              : "A connection error occurred. Please try again.");
 
       setErrorModal({
         open: true,
-        title: "เข้าสู่ระบบไม่สำเร็จ",
+        title: locale === "th" ? "เข้าสู่ระบบไม่สำเร็จ" : "Login Failed",
         message,
       });
     } finally {
@@ -157,15 +167,24 @@ export default function LoginPage() {
               >
                 {dict.auth.passwordLabel}
               </label>
-              <input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder={dict.auth.passwordPlaceholder}
-                className="block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-              />
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder={dict.auth.passwordPlaceholder}
+                  className="block w-full rounded-2xl border border-slate-200 bg-white pl-4 pr-12 py-3 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
               <div className="mt-3 text-right">
                 <Link
                   href="/auth/forgot-password"
@@ -191,7 +210,6 @@ export default function LoginPage() {
               >
                 {dict.auth.backToHome}
               </Link>
-              
             </div>
           </form>
         </section>

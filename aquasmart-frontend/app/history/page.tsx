@@ -25,8 +25,11 @@ export default function HistoryPage() {
         if (!isMounted) return;
         if (session?.user) setSessionUser({ id: session.user.id });
         else setSessionUser(null);
-      } catch (error) { console.error("Failed to check session:", error); } 
-      finally { if (isMounted) setIsCheckingSession(false); }
+      } catch (error) {
+        console.error("Failed to check session:", error);
+      } finally {
+        if (isMounted) setIsCheckingSession(false);
+      }
     }
     checkSession();
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -47,7 +50,9 @@ export default function HistoryPage() {
       } catch (error) {
         console.error("Failed to load history:", error);
         if (isMounted) showError("Failed to load history.");
-      } finally { if (isMounted) setIsLoading(false); }
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
     }
     loadHistory();
     return () => { isMounted = false; };
@@ -92,7 +97,30 @@ export default function HistoryPage() {
   }
 
   if (isCheckingSession) {
-    return (<main className="min-h-screen px-4 py-8"><section className="mx-auto max-w-5xl rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200"><p className="text-sm text-slate-500">{dict.common.loading}</p></section></main>);
+    return (
+      <main className="min-h-screen px-4 py-8">
+        <section className="mx-auto max-w-5xl space-y-6">
+          <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 animate-pulse">
+            <div className="h-4 bg-slate-200 w-16 rounded" />
+            <div className="h-8 bg-slate-200 w-1/3 rounded mt-2" />
+            <div className="h-4 bg-slate-100 w-2/3 rounded mt-3" />
+          </section>
+          
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="rounded-3xl bg-white shadow-sm ring-1 ring-slate-200 overflow-hidden animate-pulse">
+                <div className="aspect-4/3 w-full bg-slate-200" />
+                <div className="p-5 space-y-3">
+                  <div className="h-4 bg-slate-100 w-1/3 rounded" />
+                  <div className="h-5 bg-slate-200 w-2/3 rounded" />
+                  <div className="h-4 bg-slate-100 w-1/2 rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </main>
+    );
   }
 
   if (!sessionUser) {
@@ -130,7 +158,6 @@ export default function HistoryPage() {
               <Link href="/identify" className="rounded-2xl bg-blue-600 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-blue-700">{dict.history.predictMore}</Link>
             </div>
           </div>
-          {/* 🔧 แก้ไขตรงนี้: ใช้ Dictionary แทนข้อความ Hardcode */}
           <div className="mt-6 flex items-center gap-2 text-sm font-medium text-slate-600">
             <span className="flex h-6 items-center rounded-full bg-blue-50 px-2.5 text-blue-700">{uniqueHistoryItems.length}</span>
             {dict.history.records} ({dict.history.uniqueFishDesc})
@@ -138,7 +165,18 @@ export default function HistoryPage() {
         </section>
 
         {isLoading ? (
-           <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200"><p className="text-sm text-slate-500">{dict.history.loading}</p></section>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="rounded-3xl bg-white shadow-sm ring-1 ring-slate-200 overflow-hidden animate-pulse">
+                <div className="aspect-4/3 w-full bg-slate-200" />
+                <div className="p-5 space-y-3">
+                  <div className="h-4 bg-slate-100 w-1/3 rounded" />
+                  <div className="h-5 bg-slate-200 w-2/3 rounded" />
+                  <div className="h-4 bg-slate-100 w-1/2 rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
         ) : uniqueHistoryItems.length === 0 ? (
            <section className="rounded-3xl bg-white p-12 text-center shadow-sm ring-1 ring-slate-200">
              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-slate-100">
@@ -170,7 +208,7 @@ export default function HistoryPage() {
                   {item.fish_name && (
                      <div className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-blue-600">
                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                      {dict.history.match}: {item.fish_name}
+                       {dict.history.match}: {item.fish_name}
                      </div>
                   )}
                    <div className="mt-auto flex items-center justify-between pt-4">
