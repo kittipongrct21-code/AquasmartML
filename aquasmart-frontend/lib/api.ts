@@ -286,16 +286,45 @@ async function parseError(response: Response, fallback: string): Promise<never> 
   throw new Error(message);
 }
 
+// Cache the auth session to avoid calling getSession() on every single API request.
+// The cache expires after 30 seconds so stale tokens are refreshed automatically.
+let _cachedToken: string | null = null;
+let _cachedTokenTime = 0;
+const TOKEN_CACHE_TTL = 30_000; // 30 seconds
+
+async function getCachedAccessToken(): Promise<string | null> {
+  const now = Date.now();
+  if (_cachedToken && now - _cachedTokenTime < TOKEN_CACHE_TTL) {
+    return _cachedToken;
+  }
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    _cachedToken = session?.access_token ?? null;
+    _cachedTokenTime = now;
+    return _cachedToken;
+  } catch {
+    return null;
+  }
+}
+
+// Call this when auth state changes (login/logout) to force refresh.
+export function invalidateTokenCache() {
+  _cachedToken = null;
+  _cachedTokenTime = 0;
+}
+
+const REQUEST_TIMEOUT = 15_000; // 15 seconds — prevents indefinite hanging on cold starts
+
 async function requestJson<T>(
   url: string,
   init?: RequestInit,
   fallbackMessage = "Request failed"
 ): Promise<T> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const token = await getCachedAccessToken();
   
   const headers = new Headers(init?.headers);
-  if (session?.access_token) {
-    headers.set("Authorization", `Bearer ${session.access_token}`);
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
   }
   
   if (!headers.has("Content-Type") && init?.body) {
@@ -304,16 +333,30 @@ async function requestJson<T>(
     }
   }
 
-  const response = await fetch(url, {
-    ...init,
-    headers,
-    cache: "no-store",
-  });
+  // AbortController for request timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
 
-  if (!response.ok) {
-    await parseError(response, fallbackMessage);
+  try {
+    const response = await fetch(url, {
+      ...init,
+      headers,
+      signal: controller.signal,
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      await parseError(response, fallbackMessage);
+    }
+    return response.json() as Promise<T>;
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error("Request timed out. The server may be starting up — please try again in a moment.");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
   }
-  return response.json() as Promise<T>;
 }
 
 function buildQuery(params: Record<string, string | number | boolean | undefined | null>) {

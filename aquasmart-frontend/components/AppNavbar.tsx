@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase-client";
-import { getProfile, type Profile } from "@/lib/api";
+import { getProfile, invalidateTokenCache, type Profile } from "@/lib/api";
 import { useI18n } from "@/lib/i18n-context";
 import { useToast } from "@/components/providers/ToastProvider";
 import { LogOut, User, LayoutDashboard } from "lucide-react";
@@ -75,6 +75,7 @@ export default function AppNavbar() {
       }
 
       const user = session?.user ?? null;
+      invalidateTokenCache(); // Force re-fetch token on any auth change
       if (user) {
         setSessionUser({ id: user.id, email: user.email ?? null });
         await loadNavbarProfile(user.id);
@@ -94,6 +95,7 @@ export default function AppNavbar() {
   async function handleSignOut() {
     try {
       await supabase.auth.signOut();
+      invalidateTokenCache();
       showSuccess("Signed out successfully.");
       router.push("/");
       router.refresh();

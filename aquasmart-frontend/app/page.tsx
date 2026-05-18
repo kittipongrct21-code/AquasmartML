@@ -2,21 +2,32 @@
 import { Camera, Search, Home } from "lucide-react";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useI18n } from "@/lib/i18n-context";
+import { useI18n, getLocalizedValue } from "@/lib/i18n-context"; // ✅ FIXED: Import ฟังก์ชัน getLocalizedValue เพิ่มเติม
 
 export default function HomePage() {
   const [topFish, setTopFish] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { t } = useI18n(); // ใช้ t ดึงค่า Dictionary
+  const { t, locale } = useI18n(); // ✅ FIXED: ดึงค่า locale ประจำเซสชันมาใช้งานร่วมด้วย
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000"}/fish/top-searched`)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10_000);
+
+    fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000"}/fish/top-searched`, {
+      signal: controller.signal,
+    })
       .then((res) => res.json())
       .then((data) => {
         setTopFish(data);
         setIsLoading(false);
       })
-      .catch(() => setIsLoading(false));
+      .catch(() => setIsLoading(false))
+      .finally(() => clearTimeout(timeoutId));
+
+    return () => {
+      controller.abort();
+      clearTimeout(timeoutId);
+    };
   }, []);
 
   return (
@@ -48,30 +59,37 @@ export default function HomePage() {
         </div>
 
         {isLoading ? (
-           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[1, 2, 3, 4].map((i) => (<div key={i} className="h-48 bg-slate-200 rounded-2xl animate-pulse" />))}
-           </div>
+          </div>
         ) : topFish.length > 0 ? (
-           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-            {topFish.map((fish: any) => (
-               <Link href={`/fish/${fish.id}`} key={fish.id} className="group bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-200 hover:shadow-md hover:-translate-y-1 transition-all">
-                 <div className="aspect-4/3 overflow-hidden bg-slate-100">
-                   <img src={fish.cover_image_url || "/placeholder.jpg"} alt={fish.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                 </div>
-                 <div className="p-4">
-                   <h3 className="font-bold text-slate-900 truncate">{fish.name}</h3>
-                   {/* 🔧 แก้ไขตรงนี้: ใช้ Dictionary แทนคำว่า searches */}
-                   <p className="text-xs text-slate-500 mt-1">{fish.search_count || 0} {t.landing.searches}</p>
-                 </div>
-               </Link>
-            ))}
-           </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+            {topFish.map((fish: any) => {
+              // คำนวณหาชื่อปลาตามภาษาที่เลือกใช้งาน
+              const fishLocalizedName = getLocalizedValue(fish, "name", locale) || fish.name;
+
+              return (
+                <Link href={`/fish/${fish.id}`} key={fish.id} className="group bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-200 hover:shadow-md hover:-translate-y-1 transition-all">
+                  <div className="aspect-4/3 overflow-hidden bg-slate-100">
+                    <img src={fish.cover_image_url || "/placeholder.jpg"} alt={fishLocalizedName} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  </div>
+                  <div className="p-4">
+                    {/* ✅ FIXED: เรนเดอร์ชื่อปลาสองภาษาแบบ Dynamic สลับตามปุ่มกด TH/EN ใน Navbar */}
+                    <h3 className="font-bold text-slate-900 truncate">
+                      {fishLocalizedName}
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1">{fish.search_count || 0} {t.landing.searches}</p>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
         ) : (
-           <div className="bg-white rounded-2xl p-8 text-center border border-slate-200">
-             <Home className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-             {/* 🔧 แก้ไขตรงนี้: ใช้ Dictionary แทนคำว่า No data yet */}
-             <p className="text-slate-500">{t.landing.noFishData}</p>
-           </div>
+          <div className="bg-white rounded-2xl p-8 text-center border border-slate-200">
+            <Home className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+            {/* 🔧 แก้ไขตรงนี้: ใช้ Dictionary แทนคำว่า No data yet */}
+            <p className="text-slate-500">{t.landing.noFishData}</p>
+          </div>
         )}
       </section>
     </div>

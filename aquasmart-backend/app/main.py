@@ -57,9 +57,13 @@ IMAGE_MIME_TO_EXT = {
     "image/webp": ".webp",
 }
 
-# Supabase helpers
+# Supabase helpers (cached singleton clients)
+_supabase_client = None
 def get_supabase():
-    return create_client(SUPABASE_URL, SUPABASE_SECRET_KEY)
+    global _supabase_client
+    if _supabase_client is None:
+        _supabase_client = create_client(SUPABASE_URL, SUPABASE_SECRET_KEY)
+    return _supabase_client
 
 async def verify_admin_authorization(authorization: str = Header(default=None)):
     """ตรวจสอบ Bearer Token และ Role = admin ก่อนเข้าถึง Admin API"""
@@ -87,8 +91,12 @@ async def verify_admin_authorization(authorization: str = Header(default=None)):
         print(f"[ERROR] Admin auth middleware failed: {e}")
         raise HTTPException(status_code=500, detail="Authentication service error")
 
+_supabase_auth_client = None
 def get_supabase_auth_client():
-    return create_client(SUPABASE_URL, SUPABASE_ANON_KEY or SUPABASE_SECRET_KEY)
+    global _supabase_auth_client
+    if _supabase_auth_client is None:
+        _supabase_auth_client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY or SUPABASE_SECRET_KEY)
+    return _supabase_auth_client
 
 def run_query(label: str, builder_factory: Callable[[Any], Any], retries: int = 3, base_delay: float = 0.6):
     last_error = None
