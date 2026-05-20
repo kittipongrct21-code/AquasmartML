@@ -633,11 +633,18 @@ export async function deleteHistory(historyId: string | number) {
 ========================================================= */
 
 export async function getProfile(userId: string): Promise<Profile> {
-  return requestJson<Profile>(
-    `${API_BASE_URL}/profile/${userId}`,
-    undefined,
-    "Failed to fetch profile"
-  );
+  // สั่งให้วิ่งไปหา Supabase โดยตรง ไม่ต้องผ่านหลังบ้าน Render!
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", userId)
+    .single();
+
+  if (error) {
+    throw new Error(error.message || "Failed to fetch profile");
+  }
+
+  return data as Profile;
 }
 
 export async function updateProfile(

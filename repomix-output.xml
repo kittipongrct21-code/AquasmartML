@@ -53,6 +53,7 @@ aquasmart-backend/models/fish_model_inference.keras
 aquasmart-backend/models/model_config.json
 aquasmart-backend/models/thresholds.json
 aquasmart-backend/requirements.txt
+aquasmart-backend/runtime.txt
 aquasmart-backend/tools/generate_model_files.py
 aquasmart-backend/uvicorn
 aquasmart-frontend/{
@@ -202,6 +203,10 @@ ADD COLUMN notes_th text;
 
 <file path="aquasmart-backend/cd">
 
+</file>
+
+<file path="aquasmart-backend/runtime.txt">
+python-3.10.11
 </file>
 
 <file path="aquasmart-backend/uvicorn">
@@ -2779,18 +2784,6 @@ NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000
 NEXT_PUBLIC_SUPABASE_URL=https://hukuiuqtbznqshsrjnuz.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_Sm6cTCu6HTsYkPypwo1_LA_kdzhDEJS
 NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_Sm6cTCu6HTsYkPypwo1_LA_kdzhDEJS
-</file>
-
-<file path="aquasmart-frontend/next.config.ts">
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  turbopack: {
-    root: process.cwd(),
-  },
-};
-
-export default nextConfig;
 </file>
 
 <file path="deployment_guide.md">
@@ -5474,6 +5467,18 @@ export default function FishForm({
 }
 </file>
 
+<file path="aquasmart-frontend/next.config.ts">
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  turbopack: {
+    root: process.cwd(),
+  },
+};
+
+export default nextConfig;
+</file>
+
 <file path="aquasmart-frontend/package.json">
 {
   "name": "aquasmart-frontend",
@@ -5504,19 +5509,6 @@ export default function FishForm({
     "typescript": "^5"
   }
 }
-</file>
-
-<file path="aquasmart-backend/requirements.txt">
-fastapi
-uvicorn[standard]
-python-multipart
-pillow
-numpy
-tensorflow-cpu
-supabase
-python-dotenv
-httpx
-slowapi
 </file>
 
 <file path="aquasmart-frontend/app/admin/fish/page.tsx">
@@ -6480,6 +6472,19 @@ export function getLocalizedValue(
   
   return obj[baseKey] ? String(obj[baseKey]) : "";
 }
+</file>
+
+<file path="aquasmart-backend/requirements.txt">
+fastapi
+uvicorn[standard]
+python-multipart
+pillow
+numpy
+tensorflow-cpu
+supabase
+python-dotenv
+httpx
+slowapi
 </file>
 
 <file path="aquasmart-frontend/app/admin/fish/[id]/edit/page.tsx">
