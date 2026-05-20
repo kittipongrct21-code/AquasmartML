@@ -387,22 +387,18 @@ export default function PredictionPage() {
                   </p>
 
                   <div className="mt-5 space-y-3">
-                    <StatusRow
-                      label={t.prediction.catalogStatus}
-                      value={isLoadingFish ? t.common.loading : `${fishList.length}`}
-                    />
-                    <StatusRow
-                      label={t.prediction.sessionStatus}
-                      value={sessionUser ? t.prediction.signedIn : t.prediction.guestMode}
-                    />
-                    <StatusRow
-                      label={t.prediction.historySaving}
-                      value={
-                        sessionUser
-                          ? t.prediction.autoSave
-                          : t.prediction.availableSignIn
-                      }
-                    />
+                    <div className="flex items-center justify-between rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-slate-200">
+                      <span className="text-sm font-semibold text-slate-500">{t.prediction.catalogStatus}</span>
+                      <span className="text-sm font-bold text-slate-900">{isLoadingFish ? t.common.loading : `${fishList.length}`}</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-slate-200">
+                      <span className="text-sm font-semibold text-slate-500">{t.prediction.sessionStatus}</span>
+                      <span className="text-sm font-bold text-slate-900">{sessionUser ? t.prediction.signedIn : t.prediction.guestMode}</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-slate-200">
+                      <span className="text-sm font-semibold text-slate-500">{t.prediction.historySaving}</span>
+                      <span className="text-sm font-bold text-slate-900">{sessionUser ? t.prediction.autoSave : t.prediction.availableSignIn}</span>
+                    </div>
                   </div>
                 </div>
 
@@ -482,22 +478,22 @@ export default function PredictionPage() {
               </div>
 
               <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <InfoCard
-                  label={t.prediction.predictedClass}
-                  value={prediction.predicted_class || "-"}
-                />
-                <InfoCard
-                  label={t.prediction.rawClass}
-                  value={prediction.raw_predicted_class || "-"}
-                />
-                <InfoCard
-                  label={t.prediction.predictionType}
-                  value={prediction.prediction_type || "-"}
-                />
-                <InfoCard
-                  label={t.prediction.catalogMatch}
-                  value={matchedFish ? (getLocalizedValue(matchedFish, "name", locale) || matchedFish.name) : "-"}
-                />
+                <div className="rounded-2xl bg-white px-4 py-4 shadow-sm ring-1 ring-slate-200">
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{t.prediction.predictedClass}</p>
+                  <p className="mt-2 text-sm font-semibold leading-7 text-slate-900">{prediction.predicted_class || "-"}</p>
+                </div>
+                <div className="rounded-2xl bg-white px-4 py-4 shadow-sm ring-1 ring-slate-200">
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{t.prediction.rawClass}</p>
+                  <p className="mt-2 text-sm font-semibold leading-7 text-slate-900">{prediction.raw_predicted_class || "-"}</p>
+                </div>
+                <div className="rounded-2xl bg-white px-4 py-4 shadow-sm ring-1 ring-slate-200">
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{t.prediction.predictionType}</p>
+                  <p className="mt-2 text-sm font-semibold leading-7 text-slate-900">{prediction.prediction_type || "-"}</p>
+                </div>
+                <div className="rounded-2xl bg-white px-4 py-4 shadow-sm ring-1 ring-slate-200">
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{t.prediction.catalogMatch}</p>
+                  <p className="mt-2 text-sm font-semibold leading-7 text-slate-900">{matchedFish ? (getLocalizedValue(matchedFish, "name", locale) || matchedFish.name) : "-"}</p>
+                </div>
               </div>
 
               <div className="mt-6 rounded-3xl bg-slate-50 p-5">
@@ -585,12 +581,14 @@ export default function PredictionPage() {
         </section>
       </main>
 
-      {/* ✅ ปรับปรุงตามหลัก UI Quality: เพิ่มแถบเครดิตพัฒนาท้ายเพจ */}
+      {/* ✅ ปรับปรุงให้รองรับ 2 ภาษาที่แถบเครดิตท้ายเพจด้วย */}
       <footer className="w-full border-t border-slate-200 bg-white py-4 text-center text-xs font-bold tracking-wide text-slate-400">
-        ระบบของเรากำลังพัฒนา อาจมีข้อผิดพลาดได้
+        {locale === "th" 
+          ? "ระบบของเรากำลังพัฒนา อาจมีข้อผิดพลาดได้" 
+          : "Our system is currently under development and may contain errors."}
       </footer>
 
-      {/* ✅ โมดอล Popup แจ้งเตือนข้อจำกัดระบบจำแนกปลาในช่วงพัฒนา */}
+      {/* ✅ โมดอล Popup แจ้งเตือนข้อจำกัดระบบจำแนกปลาในช่วงพัฒนา (รองรับ 2 ภาษา 100%) */}
       {showNotice ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-fade-in">
           <div className="relative max-w-md w-full bg-white rounded-3xl p-6 shadow-2xl border border-slate-100 space-y-4">
@@ -611,7 +609,10 @@ export default function PredictionPage() {
             </div>
 
             <p className="text-sm font-medium leading-7 text-slate-600">
-              เนื่องจากตอนนี้ระบบของเราอยู่ในช่วงกำลังพัฒนา จึงทำให้ปลาที่สามารถทำนายได้มีเพียง 10 ชนิด นอกเหนือจากนั้นระบบจะตอบว่า ไม่ใช่ปลา หรือ ไม่รู้จักปลา ชนิดนี้ คุณสามารถ เข้าไปดูปลาสายพันธุ์อืนได้ที่ช่องค้นหาปลา ขออภัยในความไม่สดวก 
+              {locale === "th" 
+                ? "เนื่องจากตอนนี้ระบบของเราอยู่ในช่วงกำลังพัฒนา จึงทำให้ปลาที่สามารถทำนายได้มีเพียง 10 ชนิด นอกเหนือจากนั้นระบบจะตอบว่า ไม่ใช่ปลา หรือ ไม่รู้จักปลา ชนิดนี้ คุณสามารถ เข้าไปดูปลาสายพันธุ์อืนได้ที่ช่องค้นหาปลา ขออภัยในความไม่สดวก" 
+                : "Since our system is currently under development, the model can only classify 10 specific fish species. Any other species will be identified as 'Not a fish' or 'Unknown fish'. You can check and explore other species in our fish catalog search section. We apologize for any inconvenience caused."
+              }
             </p>
 
             <div className="pt-2">
@@ -628,28 +629,6 @@ export default function PredictionPage() {
         </div>
       ) : null}
 
-    </div>
-  );
-}
-
-function StatusRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-slate-200">
-      <span className="text-sm font-semibold text-slate-500">{label}</span>
-      <span className="text-sm font-bold text-slate-900">{value}</span>
-    </div>
-  );
-}
-
-function InfoCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl bg-white px-4 py-4 shadow-sm ring-1 ring-slate-200">
-      <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-        {label}
-      </p>
-      <p className="mt-2 text-sm font-semibold leading-7 text-slate-900">
-        {value}
-      </p>
     </div>
   );
 }

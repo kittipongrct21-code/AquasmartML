@@ -231,10 +231,10 @@ app.add_middleware(CustomCORSMiddleware)
 # เปิดรูปแบบมาตรฐานทับอีกหนึ่งชั้นเพื่อความสมบูรณ์แบบในการทำงาน
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=["*"],      # อนุญาตให้ทุก Domain (รวมถึง Vercel) เข้าถึงได้
+    allow_credentials=False,  # ต้องปิดเป็น False เพื่อให้แมตช์กับเครื่องหมายดอกจัน [*]
+    allow_methods=["*"],      # อนุญาตทุก Method (GET, POST, PUT, DELETE)
+    allow_headers=["*"],      # อนุญาตทุก Headers
 )
 
 # Schemas
