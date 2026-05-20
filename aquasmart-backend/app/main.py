@@ -8,8 +8,10 @@ from pathlib import Path
 from typing import Optional, Callable, Any
 import httpx
 from dotenv import load_dotenv
-from fastapi import FastAPI, UploadFile, File, HTTPException, Form, Request, Header, Depends
+from fastapi import FastAPI, UploadFile, File, HTTPException, Form, Request, Header, Depends, Response
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response as StarletteResponse
 from pydantic import BaseModel
 from supabase import create_client
 from app.services.prediction_service import prediction_service
@@ -195,11 +197,38 @@ app.state.limiter = limiter
 
 @app.exception_handler(RateLimitExceeded)
 async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
-    return JSONResponse(status_code=429, content={"detail": "Too many requests"})
+    response = JSONResponse(status_code=429, content={"detail": "Too many requests"})
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    return response
 
-# ==========================================
-# 🚀 แก้ไข CORS: เปิดประตูรับทุกโดเมน 100%
-# ==========================================
+# =========================================================
+# 🛠️ ไม้ตายก้นหีบ: Custom CORS Middleware 
+# บังคับยัดเยียดสิทธิ์ VIP ให้ทุกๆ การตอบกลับ (รวมถึงเคส Error 404/500ด้วย)
+# =========================================================
+class CustomCORSMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        if request.method == "OPTIONS":
+            response = StarletteResponse()
+            response.headers["Access-Control-Allow-Origin"] = "*"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+            response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type, X-Requested-With, Accept"
+            return response
+        
+        try:
+            response = await call_next(request)
+        except Exception as e:
+            # หากเกิด Error กลางทาง บังคับยัดหัว CORS ก่อนพ่น Error ออกไปหน้าบ้าน
+            response = JSONResponse(status_code=500, content={"detail": f"Internal Server Error: {str(e)}"})
+            
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type, X-Requested-With, Accept"
+        return response
+
+# เปิดใช้งาน Custom Middleware เป็นด่านแรกสุด
+app.add_middleware(CustomCORSMiddleware)
+
+# เปิดรูปแบบมาตรฐานทับอีกหนึ่งชั้นเพื่อความสมบูรณ์แบบในการทำงาน
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
