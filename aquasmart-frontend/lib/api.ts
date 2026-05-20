@@ -599,23 +599,33 @@ export async function createHistory(payload: HistoryCreatePayload) {
 }
 
 export async function getHistory(userId: string): Promise<HistoryItem[]> {
-  const data = await requestJson<{ data: HistoryItem[] }>(
-    `${API_BASE_URL}/history/${userId}`,
-    undefined,
-    "Failed to fetch history"
-  );
+  // วิ่งเข้าฐานข้อมูล Supabase ตาราง prediction_history โดยตรง
+  const { data, error } = await supabase
+    .from("prediction_history") 
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false }); // เรียงจากใหม่ไปเก่า
 
-  return data.data || [];
+  if (error) {
+    throw new Error(error.message || "Failed to fetch history");
+  }
+
+  return data as HistoryItem[];
 }
 
 export async function getPredictionHistory(userId: string): Promise<HistoryItem[]> {
-  const data = await requestJson<{ data: HistoryItem[] }>(
-    `${API_BASE_URL}/prediction/history/${userId}`,
-    undefined,
-    "Failed to fetch prediction history"
-  );
+  // ใช้โค้ดเหมือน getHistory เลยครับ เพื่อให้แสดงผลลัพธ์เดียวกัน
+  const { data, error } = await supabase
+    .from("prediction_history")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
 
-  return data.data || [];
+  if (error) {
+    throw new Error(error.message || "Failed to fetch prediction history");
+  }
+
+  return data as HistoryItem[];
 }
 
 export async function deleteHistory(historyId: string | number) {
