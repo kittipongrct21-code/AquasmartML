@@ -58,7 +58,7 @@ export default function PredictionPage() {
   const [currentLoadingText, setCurrentLoadingText] = useState("");
   const [isDragging, setIsDragging] = useState(false);
 
-  // 💡 แก้ไขจุดที่ 1: แยกการ Revoke ล้างความจำรูปภาพออกต่างหาก ป้องกันการ Re-render ซ้ำซ้อน
+  // แกไขจุดที่ 1: แยกการ Revoke ล้างความจำรูปภาพออกต่างหาก ป้องกันการ Re-render ซ้ำซ้อน
   useEffect(() => {
     return () => {
       if (previewUrl) {
@@ -67,7 +67,7 @@ export default function PredictionPage() {
     };
   }, [previewUrl]);
 
-  // 💡 แก้ไขจุดที่ 2: โหลดข้อมูลปลาและเซสชันผู้ใช้ "รอบแรกครั้งเดียว" ป้องกันปุ่มโดนล็อกค้างตอนเปลี่ยนรูป
+  // แก้ไขจุดที่ 2: โหลดข้อมูลปลาและเซสชันผู้ใช้ "รอบแรกครั้งเดียว" ป้องกันปุ่มโดนล็อกค้างตอนเปลี่ยนรูป
   useEffect(() => {
     let isMounted = true;
     async function bootstrap() {
@@ -127,7 +127,7 @@ export default function PredictionPage() {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, []); // 👈 ตั้งค่าเป็น Array ว่างเพื่อให้ทำงานแค่รอบเดียวตอนเปิดหน้าเว็บ
+  }, []);
 
   const confidencePercent = useMemo(() => {
     if (!prediction) return 0;
@@ -168,7 +168,6 @@ export default function PredictionPage() {
   function validateAndSetFile(file: File) {
     resetPredictionState();
 
-    // เช็กประเภทไฟล์
     if (!file.type.startsWith("image/")) {
       setSelectedFile(null);
       setErrorMessage(
@@ -179,7 +178,6 @@ export default function PredictionPage() {
       return;
     }
 
-    // เช็กขนาดไฟล์ (5MB)
     const maxSizeBytes = 5 * 1024 * 1024;
     if (file.size > maxSizeBytes) {
       setSelectedFile(null);
@@ -209,7 +207,6 @@ export default function PredictionPage() {
     setIsDragging(false);
   }
 
-  // รองรับการปล่อยเมาส์ลากวางรูปปลา
   function handleDrop(event: DragEvent<HTMLDivElement>) {
     event.preventDefault();
     setIsDragging(false);
@@ -286,7 +283,7 @@ export default function PredictionPage() {
       return;
     }
     
-    let textInterval: any = undefined; // 💡 แก้ไขจุดที่ 3: ปรับชนิดข้อมูลเป็น any ป้องกันแอปค้างตอนทำงานจริง
+    let textInterval: any = undefined;
     const startTime = Date.now();
 
     try {
@@ -409,19 +406,13 @@ export default function PredictionPage() {
                     <div className="px-6 py-10 text-center pointer-events-none">
                       <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50">
                         <svg viewBox="0 0 48 32" width="40" height="28" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          {/* หาง */}
                           <path d="M6 16 L0 8 C2 12 2 20 0 24 Z" fill="#3b82f6" opacity="0.7"/>
-                          {/* ลำตัว */}
                           <ellipse cx="26" cy="16" rx="20" ry="13" fill="#3b82f6"/>
-                          {/* ท้อง */}
                           <ellipse cx="24" cy="19" rx="13" ry="7" fill="#93c5fd" opacity="0.5"/>
-                          {/* ครีบบน */}
                           <path d="M22 6 Q26 0 32 5 Q28 8 22 6 Z" fill="#2563eb" opacity="0.85"/>
-                          {/* ตา */}
                           <circle cx="38" cy="14" r="5" fill="white"/>
                           <circle cx="39" cy="14" r="3" fill="#1e3a8a"/>
                           <circle cx="40" cy="13" r="1.2" fill="white"/>
-                          {/* เกล็ด */}
                           <path d="M26 8 Q29 5 32 8" stroke="#1d4ed8" strokeWidth="0.8" fill="none" opacity="0.4"/>
                           <path d="M20 8 Q23 5 26 8" stroke="#1d4ed8" strokeWidth="0.8" fill="none" opacity="0.35"/>
                         </svg>
@@ -483,9 +474,14 @@ export default function PredictionPage() {
                   </p>
 
                   <div className="mt-5 space-y-3">
+                    {/* 🛠️ แก้ไขจุดหลัก: เปลี่ยนจากดึงเลขตารางรวม มาเป็น Hardcode ตัวเลข 10 ชนิด และเปลี่ยนชื่อป้ายกำกับเพื่อความชัดเจน */}
                     <div className="flex items-center justify-between rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-slate-200">
-                      <span className="text-sm font-semibold text-slate-500">{t.prediction.catalogStatus}</span>
-                      <span className="text-sm font-bold text-slate-900">{isLoadingFish ? t.common.loading : `${fishList.length}`}</span>
+                      <span className="text-sm font-semibold text-slate-500">
+                        {locale === "th" ? "สายพันธุ์ที่รองรับ" : "Supported Species"}
+                      </span>
+                      <span className="text-sm font-bold text-blue-600">
+                        10 {locale === "th" ? "ชนิด" : "Species"}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-slate-200">
                       <span className="text-sm font-semibold text-slate-500">{t.prediction.sessionStatus}</span>
@@ -723,7 +719,6 @@ export default function PredictionPage() {
         </div>
       ) : null}
 
-      {/* ป๊อบอัปโหลดดิ้ง — น้องปลาน่ารักดุกดิ๊กสุดๆ */}
       {isPredicting && (
         <div className="fixed inset-0 bg-gradient-to-b from-blue-900/60 to-cyan-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div
@@ -731,7 +726,6 @@ export default function PredictionPage() {
             style={{ minHeight: 340 }}
           >
             <style>{`
-              /* ---- ตัวปลาโยกตัว ---- */
               @keyframes fish-swim {
                 0%   { transform: translateX(-6px) translateY(2px) rotate(-4deg); }
                 25%  { transform: translateX(0px)  translateY(-5px) rotate(0deg); }
@@ -739,50 +733,41 @@ export default function PredictionPage() {
                 75%  { transform: translateX(0px)  translateY(-5px) rotate(0deg); }
                 100% { transform: translateX(-6px) translateY(2px) rotate(-4deg); }
               }
-              /* ---- หางสะบัดซ้ายขวาเร็วๆ ---- */
               @keyframes tail-wag {
                 0%   { transform: rotate(-28deg) scaleX(0.9); }
                 50%  { transform: rotate(28deg)  scaleX(1.05); }
                 100% { transform: rotate(-28deg) scaleX(0.9); }
               }
-              /* ---- ครีบบนกระพือ ---- */
               @keyframes fin-flap {
                 0%,100% { transform: scaleY(1) rotate(-6deg); }
                 50%     { transform: scaleY(1.35) rotate(6deg); }
               }
-              /* ---- ครีบอกกระพือ ---- */
               @keyframes pec-flap {
                 0%,100% { transform: rotate(-15deg) scaleX(1); }
                 50%     { transform: rotate(20deg)  scaleX(1.2); }
               }
-              /* ---- ตากระพริบ ---- */
               @keyframes blink {
                 0%,90%,100% { transform: scaleY(1); }
                 95%         { transform: scaleY(0.08); }
               }
-              /* ---- แก้มแดงกระพริบ ---- */
               @keyframes blush-pulse {
                 0%,100% { opacity: 0.55; }
                 50%     { opacity: 0.9; }
               }
-              /* ---- ฟองอากาศลอยขึ้น ---- */
               @keyframes bubble-up {
                 0%   { transform: translateY(0px) translateX(0px) scale(0.5); opacity: 0; }
                 15%  { opacity: 0.85; }
                 70%  { opacity: 0.5; }
                 100% { transform: translateY(-110px) translateX(var(--bx,8px)) scale(1.15); opacity: 0; }
               }
-              /* ---- การ์ดโดดเด้ง ---- */
               @keyframes card-bounce {
                 0%,100% { transform: translateY(0px); }
                 50%     { transform: translateY(-6px); }
               }
-              /* ---- ข้อความกระเพื่อม ---- */
               @keyframes text-wave {
                 0%,100% { opacity: 1; }
                 50%     { opacity: 0.45; }
               }
-              /* ---- ดาวน้อยๆ วิ้งๆ ---- */
               @keyframes sparkle {
                 0%,100% { transform: scale(0) rotate(0deg);   opacity: 0; }
                 40%     { transform: scale(1.2) rotate(180deg); opacity: 1; }
@@ -805,10 +790,8 @@ export default function PredictionPage() {
               .loading-txt { animation: text-wave 1.4s ease-in-out infinite; }
             `}</style>
 
-            {/* การ์ดหลัก */}
             <div className="card-anim bg-white/95 rounded-3xl shadow-2xl px-8 pt-6 pb-7 w-full flex flex-col items-center gap-4 border border-blue-100">
 
-              {/* ตู้น้ำจำลอง */}
               <div
                 className="relative flex items-center justify-center rounded-2xl overflow-hidden"
                 style={{
@@ -818,7 +801,6 @@ export default function PredictionPage() {
                   boxShadow: "inset 0 4px 20px rgba(56,189,248,0.35), 0 4px 16px rgba(14,165,233,0.2)",
                 }}
               >
-                {/* แสงกะพริบใต้น้ำ */}
                 <div
                   style={{
                     position: "absolute", inset: 0,
@@ -827,30 +809,25 @@ export default function PredictionPage() {
                   }}
                 />
 
-                {/* สาหร่ายซ้าย */}
                 <svg style={{ position:"absolute", bottom:0, left:8 }} width="18" height="36" viewBox="0 0 18 36">
                   <path d="M9 36 Q3 28 9 20 Q15 12 9 4" stroke="#4ade80" strokeWidth="3" fill="none" strokeLinecap="round"/>
                   <circle cx="9" cy="4" r="4" fill="#22c55e"/>
                 </svg>
-                {/* สาหร่ายขวา */}
                 <svg style={{ position:"absolute", bottom:0, right:10 }} width="14" height="28" viewBox="0 0 14 28">
                   <path d="M7 28 Q2 22 7 16 Q12 10 7 4" stroke="#34d399" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
                   <circle cx="7" cy="4" r="3" fill="#10b981"/>
                 </svg>
-                {/* กรวดพื้น */}
                 <div style={{
                   position:"absolute", bottom:0, left:0, right:0, height:14,
                   background:"linear-gradient(90deg,#fde68a,#fbbf24,#fde68a,#fed7aa)",
                   borderRadius:"0 0 12px 12px"
                 }}/>
 
-                {/* ฟองอากาศ */}
                 <div className="bubble"  style={{ position:"absolute", bottom:14, left:"38%",  width:7,  height:7,  borderRadius:"50%", background:"rgba(255,255,255,0.7)", border:"1px solid rgba(255,255,255,0.9)" }}/>
                 <div className="bubble-2" style={{ position:"absolute", bottom:14, left:"58%",  width:5,  height:5,  borderRadius:"50%", background:"rgba(255,255,255,0.6)", border:"1px solid rgba(255,255,255,0.8)" }}/>
                 <div className="bubble-3" style={{ position:"absolute", bottom:14, left:"28%",  width:4,  height:4,  borderRadius:"50%", background:"rgba(255,255,255,0.5)", border:"1px solid rgba(255,255,255,0.7)" }}/>
                 <div className="bubble-4" style={{ position:"absolute", bottom:14, left:"70%",  width:6,  height:6,  borderRadius:"50%", background:"rgba(255,255,255,0.65)", border:"1px solid rgba(255,255,255,0.85)" }}/>
 
-                {/* ✦ ดาวกระจาย */}
                 <div className="sparkle-1" style={{ position:"absolute", top:16, left:20 }}>
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 0 L8.2 5.8 L14 7 L8.2 8.2 L7 14 L5.8 8.2 L0 7 L5.8 5.8 Z" fill="#fbbf24"/></svg>
                 </div>
@@ -861,7 +838,6 @@ export default function PredictionPage() {
                   <svg width="10" height="10" viewBox="0 0 14 14" fill="none"><path d="M7 0 L8.2 5.8 L14 7 L8.2 8.2 L7 14 L5.8 8.2 L0 7 L5.8 5.8 Z" fill="#fbbf24"/></svg>
                 </div>
 
-                {/* 🐠 ตัวปลาน่ารัก */}
                 <div className="fish-body" style={{ position:"relative", zIndex:2 }}>
                   <svg viewBox="0 0 80 44" width="108" height="60">
                     <defs>
@@ -892,56 +868,43 @@ export default function PredictionPage() {
                       </radialGradient>
                     </defs>
 
-                    {/* หางปลาสะบัด */}
                     <g className="fish-tail">
                       <path d="M8 22 L-4 10 C-1 16,-1 28, -4 34 Z" fill="url(#tailG)" opacity="0.9"/>
                     </g>
 
-                    {/* ลำตัวหลัก */}
                     <ellipse cx="38" cy="22" rx="30" ry="18" fill="url(#bodyG)"/>
-                    {/* ท้องปลา */}
                     <ellipse cx="36" cy="26" rx="20" ry="10" fill="url(#bellyG)" opacity="0.6"/>
 
-                    {/* เกล็ดปลา */}
                     <path d="M38 12 Q42 8 46 12" stroke="#ea580c" strokeWidth="1" fill="none" opacity="0.5"/>
                     <path d="M30 11 Q34 7 38 11" stroke="#ea580c" strokeWidth="1" fill="none" opacity="0.4"/>
                     <path d="M46 14 Q50 10 54 14" stroke="#ea580c" strokeWidth="1" fill="none" opacity="0.4"/>
 
-                    {/* ครีบบนกระพือ */}
                     <g className="fish-fin">
                       <path d="M34 8 Q38 -1 46 6 Q42 10 34 8 Z" fill="url(#finG)" opacity="0.9"/>
                     </g>
 
-                    {/* ครีบอกกระพือ */}
                     <g className="fish-pec">
                       <path d="M32 24 Q26 30 24 38 Q30 34 36 27 Z" fill="url(#finG)" opacity="0.8"/>
                     </g>
 
-                    {/* ครีบหาง (คู่) */}
                     <path d="M54 16 Q62 12 64 20 Q58 18 54 16Z" fill="url(#finG)" opacity="0.7"/>
 
-                    {/* ตาปลา - ใหญ่น่ารัก */}
                     <g className="fish-eye">
                       <circle cx="56" cy="19" r="7" fill="url(#eyeG)" stroke="white" strokeWidth="1"/>
                       <circle cx="57" cy="19" r="4.5" fill="#1e293b"/>
                       <circle cx="58" cy="17" r="1.8" fill="white"/>
-                      {/* ไฮไลท์ตา */}
                       <circle cx="55" cy="20.5" r="0.9" fill="white" opacity="0.6"/>
                     </g>
 
-                    {/* แก้มแดงน่ารัก */}
                     <ellipse className="fish-blush" cx="50" cy="25" rx="5" ry="3.5" fill="url(#blushG)" opacity="0.55"/>
 
-                    {/* ปาก */}
                     <path d="M65 22 Q68 25 65 26" stroke="#c2410c" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
 
-                    {/* ลายแถบสีขาว */}
                     <path d="M42 6 Q44 22 42 38" stroke="rgba(255,255,255,0.35)" strokeWidth="3" fill="none" strokeLinecap="round"/>
                   </svg>
                 </div>
               </div>
 
-              {/* ชื่อและข้อความ */}
               <div className="space-y-1.5 w-full">
                 <h3 className="font-extrabold text-slate-900 text-xl tracking-tight">
                   {locale === "th" ? "กำลังตรวจสอบสายพันธุ์" : "Processing Prediction"}
@@ -951,7 +914,6 @@ export default function PredictionPage() {
                 </p>
               </div>
 
-              {/* แถบ progress เด้งๆ */}
               <div className="w-full h-2 bg-blue-100 rounded-full overflow-hidden">
                 <div
                   style={{
